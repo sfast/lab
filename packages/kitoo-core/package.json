@@ -1,0 +1,56 @@
+{
+  "name": "kitoo-core",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./dist",
+  "scripts": {
+    "test": "mocha --require babel-core/register",
+    "compile": "./node_modules/babel-cli/bin/babel.js --presets es2017 -d dist/ src/",
+    "prepublish": "bash compile.sh",
+    "doc": "./node_modules/.bin/jsdoc -c jsdoc.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sfast/kitoo-core.git"
+  },
+  "author": "Steadfast Teach - http://steadfast.tech",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sfast/kitoo-core/issues"
+  },
+  "homepage": "https://github.com/sfast/kitoo-core#readme",
+  "dependencies": {
+    "babel-loader": "^7.0.0",
+    "babel-plugin-transform-function-bind": "^6.22.0",
+    "babel-plugin-transform-helper": "0.0.6",
+    "babel-plugin-transform-regenerator": "^6.24.1",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-polyfill": "^6.23.0",
+    "babel-runtime": "^6.23.0",
+    "bluebird": "^3.4.7",
+    "lokijs": "^1.4.3",
+    "nodik-zmq": "^1.0.9",
+    "read-config": "^2.0.0",
+    "underscore": "latest",
+    "uuid": "^3.0.1",
+    "vorpal": "^1.12.0",
+    "vorpal-autocomplete-fs": "0.0.3",
+    "yargs": "^6.6.0",
+    "zmq": "^2.15.3"
+  },
+  "devDependencies": {
+    "babel-cli": "^6.24.1",
+    "babel-core": "^6.24.1",
+    "babel-plugin-transform-function-bind": "^6.22.0",
+    "babel-plugin-transform-runtime": "^6.23.0",
+    "babel-polyfill": "^6.23.0",
+    "babel-preset-es2015": "^6.24.1",
+    "babel-preset-es2016": "^6.24.1",
+    "babel-preset-es2017": "^6.24.1",
+    "docdash": "^0.4.0",
+    "jsdoc": "^3.4.3",
+    "jsdoc-strip-async-await": "^0.1.0",
+    "mocha": "^3.4.1",
+    "webpack": "^2.5.1"
+  }
+}
