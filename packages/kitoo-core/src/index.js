@@ -8,5 +8,6 @@ let {EVENTS, LAYERS} = globals;
 export {default as Dns} from './dns'
 export {default as Executor} from './executor'
 export {default as Service} from './service'
+export {default as Utils} from './utils'
 export {EVENTS as  Events};
 export {LAYERS as Layers};
