@@ -10,7 +10,7 @@ import debugFactory from 'debug';
 import globals from './globals';
 
 let debug = debugFactory('kitoo::dns');
-let kitooConfigOptions = readConfig('./.kitoo');
+let kitooConfigOptions = readConfig(path.resolve(`${__dirname}/.kitoo`');
 let {EVENTS, LAYERS} = globals;
 let db = new loki('./db/kitoo.json');
 
