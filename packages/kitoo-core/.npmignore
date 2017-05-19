@@ -1,11 +1,9 @@
 .babelrc
 .gitignore
 .idea/*
-compile.sh
 jsdoc.json
 node_modules/
-src/
 docs/
 tmp/
-db/executor.json
+db/kitoo.json
 npm-debug.log
