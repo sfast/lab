@@ -1,6 +1,6 @@
 import path from 'path';
 import childProcess from 'child_process';
-export {default as Config} from './config';
+export {default as Config} from '../config';
 
 let npmInstallService = async (serviceName) => {
     let config = Config();
