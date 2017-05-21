@@ -1,7 +1,9 @@
 /**
  * Created by artak on 2/22/17.
  */
+
 import _ from 'underscore';
+import path from 'path'
 import Node from 'nodik-zmq';
 import loki from 'lokijs';
 import readConfig from 'read-config';
@@ -10,7 +12,8 @@ import debugFactory from 'debug';
 import globals from './globals';
 
 let debug = debugFactory('kitoo::dns');
-let kitooConfigOptions = readConfig(path.resolve(`${__dirname}/.kitoo`);
+
+let kitooConfigOptions = readConfig([path.resolve(`${__dirname}/kitoo.json`)]);
 let {EVENTS, LAYERS} = globals;
 let db = new loki('./db/kitoo.json');
 
@@ -21,24 +24,30 @@ let ExecutorPackCollection = db.addCollection('dns-executorpacks',  { unique: ['
 let _private = new WeakMap();
 
 export default class Dns extends Node {
-    constructor({bind}) {
+    constructor(data = {}) {
+        let {bind, port} = data;
         super({layer: LAYERS.DNS});
 
         let _scope = {
             executorManager: new ExecutorManager(this),
-            bindAddress: bind
+            bind: bind,
+            port: port
         };
 
         _private.set(this, _scope);
     }
 
-    async start(bindAddress) {
+    async start(data = {}) {
         let _scope = _private.get(this);
-        if(bindAddress) {
-            _scope.bindAddress = bindAddress;
+        let {bind, port} = data;
+        if(bind) {
+            _scope.bind = bind;
+        }
+        if(port) {
+            _scope.port = port;
         }
 
-        await super.bind(_scope.bindAddress);
+        await super.bind(`${_scope.bind}:${_scope.port}`);
         _scope.executorManager.init();
     }
 

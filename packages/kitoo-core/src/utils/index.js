@@ -2,7 +2,7 @@ import path from 'path';
 import childProcess from 'child_process';
 import readConfig from 'read-config';
 
-let kitooConfigOptions = readConfig('../.kitoo');
+let kitooConfigOptions = readConfig(path.resolve(__dirname, '../kitoo.json'));
 let serviceDirRoot = kitooConfigOptions.kitooDir;
 
 let npmInstallService = async (serviceName) => {
