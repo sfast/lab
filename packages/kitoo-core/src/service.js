@@ -13,13 +13,15 @@ let {EVENTS,LAYER} = globals;
 let _private = new WeakMap();
 
 export default class Service extends Node {
-      constructor({service, executor, host, layer}) {
-          super({layer});
+      constructor(data = {}) {
+          let {service, executor, host, layer} = data;
+          super({layer: layer});
           // ** When creating service we are passing executorId and host via shell
 
            let _scope = {};
 
            let _onConnect = async () => {
+
                 let handlers = {};
                 for (let name of Object.getOwnPropertyNames(Object.getPrototypeOf(this))) {
                     let method = this[name];
@@ -59,6 +61,8 @@ export default class Service extends Node {
                   _scope.error = err;
                   _private.set(this, _scope);
               });
+
+           console.log(`Service ${service} started`);
     }
 
     toJSON() {
