@@ -1,12 +1,12 @@
 {
   "name": "kitoo-core",
-  "version": "1.0.10",
+  "version": "1.0.11",
   "description": "",
   "main": "./dist",
   "scripts": {
     "test": "mocha --require babel-core/register",
     "compile": "./node_modules/babel-cli/bin/babel.js --presets es2017 -d dist/ src/",
-    "prepublish" : "npm run compile",
+    "prepublish": "npm run compile",
     "doc": "./node_modules/.bin/jsdoc -c jsdoc.json"
   },
   "repository": {
