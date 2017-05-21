@@ -3,6 +3,12 @@ import path from 'path';
 
 let _config = null;
 
+let defaultConf = {
+    "kitooDir" : "./kitoos",
+    "any" : 1
+};
+
+
 export default async () => {
     if(!_config) {
         let rootConf, defaultConf = {};
@@ -12,13 +18,6 @@ export default async () => {
 
         if(rootConfigExists) {
             rootConf = await fse.readJson(rootConfigPath);
-        }
-
-        let defaultConfigPath = path.resolve(`${__dirname}/kitoo.json`);
-        let defaultConfigExists = await fse.pathExists(defaultConfigPath);
-
-        if(defaultConfigExists) {
-            defaultConf = await fse.readJson(defaultConfigPath);
         }
 
         _config = Object.assign(defaultConf, rootConf);
