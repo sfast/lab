@@ -68,6 +68,10 @@ class ExecutorManager {
 
     init() {
         let dns = _private.get(this).dns;
+
+        // ** logging to dns
+        dns.onTick(EVENTS.EXECUTOR.NOTIFY, (data) => {console.log(data)});
+
         dns.onTick(EVENTS.EXECUTOR.START, this::executorStartHandler);
         dns.onTick(EVENTS.EXECUTOR.STOP, this::executorStopHandler);
         dns.onTick(EVENTS.EXECUTOR.FAIL, this::executorStopHandler);
@@ -82,11 +86,18 @@ class ExecutorManager {
 
     destroy(){
         let dns = _private.get(this).dns;
+        dns.offTick(EVENTS.EXECUTOR.NOTIFY);
+
         dns.offTick(events.EXECUTOR.START);
         dns.offTick(events.EXECUTOR.STOP);
+        dns.offTick(events.EXECUTOR.FAIL);
+
+        dns.offTick(events.EXECUTOR.SERVICE_PACK_FINISH);
+        dns.offTick(events.EXECUTOR.SERVICE_COMPILE_FINISH);
 
         dns.offTick(events.SERVICE.START);
         dns.offTick(events.SERVICE.STOP);
+        dns.offTick(events.SERVICE.FAIL);
     }
 
     getServiceInfo(serviceName) {
@@ -100,22 +111,42 @@ class ExecutorManager {
         return {count : qty};
     }
 
-    tryToRunServiceOnExecutor(executorId, serviceName) {
-        console.log(`Try to run ${executorId} ${serviceName}`);
-        let executorNode = _private.get(this).executorList.get(executorId);
-        if(executorNode && executorNode.isOnline()) {
-            if(!executorNode.hasCompiledService(serviceName)) {
-                let servicePack = Commands.ServiceCommand.packService(serviceName);
-                // { executor : executorId, pack: servicePack }
-                this.tick(executorId, events.SERVICE.COMPILE, servicePack);
-            } else {
-                this.tick(executorId, events.SERVICE.RUN, {count: 1, name : serviceName});
-            }
+    upService(data = {}) {
+        let {name, pack, executor} = data;
+        let dns = _private.get(this).dns;
+        let onlineExecutors = this.getOnlineExecutors();
+        if (!onlineExecutors.length) {
+            throw new Error(`Can't run service '${name}, no online executors found`);
         }
-        else {
-            console.error(`Cant run service ${serviceName} on ${executorId}`);
+
+        if (executor && onlineExecutors.indexOf(executor) == -1) {
+            throw new Error(`Can't run service '${name}, can't find executor ${executor} under online executors list`);
         }
+
+        if(!executor) {
+            // ** get Random Executor
+            executor = this.getAnyOnlineExecutor();
+        }
+
+        dns.tick(executor, EVENTS.DNS.SERVICE_UP, pack);
     }
+
+    // tryToRunServiceOnExecutor(executorId, serviceName) {
+    //     console.log(`Try to run ${executorId} ${serviceName}`);
+    //     let executorNode = _private.get(this).executorList.get(executorId);
+    //     if(executorNode && executorNode.isOnline()) {
+    //         if(!executorNode.hasCompiledService(serviceName)) {
+    //             let servicePack = Commands.ServiceCommand.packService(serviceName);
+    //             // { executor : executorId, pack: servicePack }
+    //             this.tick(executorId, events.SERVICE.COMPILE, servicePack);
+    //         } else {
+    //             this.tick(executorId, events.SERVICE.RUN, {count: 1, name : serviceName});
+    //         }
+    //     }
+    //     else {
+    //         console.error(`Cant run service ${serviceName} on ${executorId}`);
+    //     }
+    // }
 
     getOnlineExecutors(){
         let onlineExecutorIds = [];
@@ -125,6 +156,11 @@ class ExecutorManager {
         });
 
         return onlineExecutorIds;
+    }
+
+    getAnyOnlineExecutor() {
+        let onlineExecutors = this.getOnlineExecutors();
+        return onlineExecutors[Math.floor(Math.random()*onlineExecutors.length)];
     }
 
     isExecutorOnline(executorId) {
@@ -143,7 +179,7 @@ class ExecutorManager {
 function executorStartHandler(data = {}) {
     let {id, layer, status, started} = data;
     let _scope = _private.get(this);
-    debug(`EXECUTOR.READY ${id}`);
+    debug(`EXECUTOR.START ${id}`);
     ExecutorCollection.findAndRemove({id: id});
     ExecutorCollection.insert(data);
 }

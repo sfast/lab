@@ -28,10 +28,11 @@ export default  {
 
       DNS: {
           // ** action ticks for executor
-          SERVICE_PACK_START: 1000,
-          SERVICE_COMPILE_START: 1001,
+          SERVICE_COMPILE_START: 1000,
+          SERVICE_PACK_START: 1001,
           SERVICE_UP: 1002,
           SERVICE_DOWN:1003,
+
           SERVICE_RESTART: 1004,
           SERVICE_STATUS: 1005,
           // ** proxy ticks down to service layer
