@@ -18,7 +18,10 @@ let db = new loki('./db/kitoo.json');
 
 let ExecutorCollection = db.addCollection('dns-executors',  { unique: ['id','name']});
 let ServiceCollection = db.addCollection('dns-services',  { unique: ['id', 'name']});
-let ExecutorPackCollection = db.addCollection('dns-executorpacks',  { unique: ['id']});
+
+let kitooLog = (data) => {
+    console.log(data);
+};
 
 let _private = new WeakMap();
 
@@ -28,7 +31,7 @@ export default class Dns extends Node {
         super({layer: LAYERS.DNS});
 
         let _scope = {
-            executorManager: new ExecutorManager(this),
+            dnsManager: new DnsManager(this),
             bind: bind,
             port: port
         };
@@ -47,17 +50,17 @@ export default class Dns extends Node {
         }
 
         await super.bind(`${_scope.bind}:${_scope.port}`);
-        _scope.executorManager.init();
+        _scope.dnsManager.init();
     }
 
     async stop() {
         let _scope = _private.get(this);
         await super.unbind();
-        _scope.executorManager.destroy();
+        _scope.dnsManager.destroy();
     }
 }
 
-class ExecutorManager {
+class DnsManager {
     constructor(dns){
         let _scope = {
             dns: dns
@@ -69,93 +72,47 @@ class ExecutorManager {
     init() {
         let dns = _private.get(this).dns;
 
-        // ** logging to dns
-        dns.onTick(EVENTS.EXECUTOR.NOTIFY, (data) => {console.log(data)});
-
         dns.onTick(EVENTS.EXECUTOR.START, this::executorStartHandler);
         dns.onTick(EVENTS.EXECUTOR.STOP, this::executorStopHandler);
         dns.onTick(EVENTS.EXECUTOR.FAIL, this::executorStopHandler);
 
-        dns.onTick(EVENTS.EXECUTOR.SERVICE_PACK_FINISH, this::servicePackFinishdHandler);
-        dns.onTick(EVENTS.EXECUTOR.SERVICE_COMPILE_FINISH, this::serviceCompileFinishdHandler);
-
         dns.onTick(EVENTS.SERVICE.START, this::serviceStartHandler);
         dns.onTick(EVENTS.SERVICE.STOP, this::serviceStopHandler);
         dns.onTick(EVENTS.SERVICE.FAIL, this::serviceStopHandler);
+
+        dns.onTick(EVENTS.AGENT.NOTIFY, (data) => {console.log(data)});
+        dns.onTick(EVENTS.AGENT.SERVICE_UP,  this::serviceUpHandler());
+        dns.onTick(EVENTS.AGENT.SERVICE_DOWN,  this::serviceDownHandler());
+        dns.onTick(EVENTS.AGENT.SERVICE_RESTART,  this::serviceRestartHandler());
+        dns.onTick(EVENTS.AGENT.SERVICE_STATUS,  this::serviceStatusHandler());
     }
 
     destroy(){
         let dns = _private.get(this).dns;
-        dns.offTick(EVENTS.EXECUTOR.NOTIFY);
 
-        dns.offTick(events.EXECUTOR.START);
-        dns.offTick(events.EXECUTOR.STOP);
-        dns.offTick(events.EXECUTOR.FAIL);
+        dns.offTick(EVENTS.EXECUTOR.START);
+        dns.offTick(EVENTS.EXECUTOR.STOP);
+        dns.offTick(EVENTS.EXECUTOR.FAIL);
 
-        dns.offTick(events.EXECUTOR.SERVICE_PACK_FINISH);
-        dns.offTick(events.EXECUTOR.SERVICE_COMPILE_FINISH);
+        dns.offTick(EVENTS.SERVICE.START);
+        dns.offTick(EVENTS.SERVICE.STOP);
+        dns.offTick(EVENTS.SERVICE.FAIL);
 
-        dns.offTick(events.SERVICE.START);
-        dns.offTick(events.SERVICE.STOP);
-        dns.offTick(events.SERVICE.FAIL);
+        dns.offTick(EVENTS.AGENT.NOTIFY);
+        dns.offTick(EVENTS.AGENT.SERVICE_UP);
+        dns.offTick(EVENTS.AGENT.SERVICE_DOWN);
+        dns.offTick(EVENTS.AGENT.SERVICE_RESTART);
+        dns.offTick(EVENTS.AGENT.SERVICE_STATUS);
     }
-
-    getServiceInfo(serviceName) {
-        let _scope = _private.get(this);
-
-        let qty = 0;
-        _scope.executorList.forEach((executorItem, executorId) => {
-            qty += executorItem.hasRunningService(serviceName);
-        });
-
-        return {count : qty};
-    }
-
-    upService(data = {}) {
-        let {name, pack, executor} = data;
-        let dns = _private.get(this).dns;
-        let onlineExecutors = this.getOnlineExecutors();
-        if (!onlineExecutors.length) {
-            throw new Error(`Can't run service '${name}, no online executors found`);
-        }
-
-        if (executor && onlineExecutors.indexOf(executor) == -1) {
-            throw new Error(`Can't run service '${name}, can't find executor ${executor} under online executors list`);
-        }
-
-        if(!executor) {
-            // ** get Random Executor
-            executor = this.getAnyOnlineExecutor();
-        }
-
-        dns.tick(executor, EVENTS.DNS.SERVICE_UP, pack);
-    }
-
-    // tryToRunServiceOnExecutor(executorId, serviceName) {
-    //     console.log(`Try to run ${executorId} ${serviceName}`);
-    //     let executorNode = _private.get(this).executorList.get(executorId);
-    //     if(executorNode && executorNode.isOnline()) {
-    //         if(!executorNode.hasCompiledService(serviceName)) {
-    //             let servicePack = Commands.ServiceCommand.packService(serviceName);
-    //             // { executor : executorId, pack: servicePack }
-    //             this.tick(executorId, events.SERVICE.COMPILE, servicePack);
-    //         } else {
-    //             this.tick(executorId, events.SERVICE.RUN, {count: 1, name : serviceName});
-    //         }
-    //     }
-    //     else {
-    //         console.error(`Cant run service ${serviceName} on ${executorId}`);
-    //     }
-    // }
 
     getOnlineExecutors(){
-        let onlineExecutorIds = [];
-        _private.get(this).executorList.values().forEach((executorItem) => {
-            let identity = executorItem.getIdentity();
-            onlineExecutorIds.push(identity);
-        });
 
-        return onlineExecutorIds;
+        let onlineExecutorIds = [];
+
+        let executors = ExecutorCollection.find({state: 'online'});
+        return executors.map((executorItem) => {
+            return executorItem.state == 'online';
+        });
     }
 
     getAnyOnlineExecutor() {
@@ -164,27 +121,40 @@ class ExecutorManager {
     }
 
     isExecutorOnline(executorId) {
-        let executorNode = _private.get(this).executorList.get(executorId);
-        return executorNode && executorNode.isOnline() ? executorNode  : false;
+        let executor = ExecutorCollection.findOne({id: executorId});
+        if(!executor) {
+            throw new Error(`Executor ${executorId} is not found.`);
+        }
+
+        return executor.state == 'online';
     }
 
-    hasExecutorCompiledService(executorId, serviceName) {
-        let executorNode = _private.get(this).executorList.get(executorId);
-        return executorNode ? executorNode.hasCompiledService(serviceName) : false;
+    getServiceInfo(serviceName) {
+        let serviceMonitor = { name : serviceName, online: 0, executors : {}};
+        let services = ServiceCollection.find({name : serviceName});
+        if(!services) {
+            services = [];
+        }
+
+        services.forEach((serviceItem) => {
+            serviceMonitor.online +=1;
+        });
+
+        return serviceMonitor;
     }
 }
 
 // ** Executor Handlers
 
-function executorStartHandler(data = {}) {
+let executorStartHandler = (data = {}) => {
     let {id, layer, status, started} = data;
     let _scope = _private.get(this);
     debug(`EXECUTOR.START ${id}`);
     ExecutorCollection.findAndRemove({id: id});
     ExecutorCollection.insert(data);
-}
+};
 
-function executorStopHandler (id) {
+let executorStopHandler = (id) => {
     console.info(`Executor ${id} is stopped, setting it to offline`);
     let _scope = _private.get(this);
     let executor = ExecutorCollection.findOne({id: id});
@@ -194,46 +164,60 @@ function executorStopHandler (id) {
     });
 }
 
-function serviceStartHandler(data = {}) {
+// ** Service Handlers
+
+let serviceStartHandler = (data = {}) => {
     let _scope = _private.get(this);
     let {id, name, layer, executorId, executorHost, status, started} = data;
     console.log(`Service ${name} : ${id} is running on executor id: ${executorId}, host: ${executorHost}`);
     ServiceCollection.insert(data);
-}
+};
 
-function serviceStopHandler(id) {
+let serviceStopHandler = (id) => {
     let service = ServiceCollection.findOne({id:id});
     console.info(`Service ${id} (${service.name}) stopped`);
 
     ServiceCollection.findAndUpdate({id: id}, (item) => {
         item.status = 'offline';
     });
-}
+};
 
-function servicePackFinishdHandler(data = {}) {
-    ExecutorPackCollection.update(data);
-}
+// ** Agent Handlers
 
-function serviceCompileFinishdHandler(data = {}) {
-    ExecutorPackCollection.update(data);
-}
+let serviceUpHandler = (data = {}) => {
+    let {name, pack, executor} = data;
+    let dns = _private.get(this).dns;
+    let onlineExecutors = dns.getOnlineExecutors();
+    if (!onlineExecutors.length) {
+        let errTxt = `Can't run service '${name}, no online executors found`;
+        dns.tickLayer(LAYERS.AGENT, EVENTS.AGENT.NOTIFY, errTxt);
+        throw new Error(errTxt);
+    }
 
-/*
- function _anythingToRun(){
- let _scope = _private.get(this);
- let compiledServices = Commands.ServiceCommand.getAllServices();
- console.log(compiledServices);
- // compiledServices.forEach( (serviceName) => {
- //     let serviceRunCount = Math.max(_defaultOptions.any, _defaultOptions[serviceName] || 0);
- //     let serviceItemInfo = this.getServiceInfo(serviceName);
- //     if(serviceItemInfo.count < serviceRunCount) {
- //         let remainingCount = serviceRunCount - serviceItemInfo.count;
- //         for(let i = 0; i < remainingCount; i++) {
- //             let executorId = _scope.executorList.values()[0].getIdentity();
- //             console.log(`Kitoo - there is service ${serviceName} to run, remaining: ${remainingCount}`);
- //             this.emitToChild(executorId, events.SERVICE.RUN,  {name : serviceName, count : remainingCount});
- //         }
- //     }
- // });
- }
- */
+    if (executor && onlineExecutors.indexOf(executor) == -1) {
+        let errTxt = `Can't run service '${name}, can't find executor ${executor} under online executors list`;
+        dns.tickLayer(LAYERS.AGENT, EVENTS.AGENT.NOTIFY, errTxt);
+        throw new Error(errTxt);
+    }
+
+    if(!executor) {
+        // ** get Random Executor
+        executor = dns.getAnyOnlineExecutor();
+    }
+
+    console.log(`Trying to run service ${name} on worker ${executor}`);
+    dns.tick(executor, EVENTS.AGENT.SERVICE_UP, pack);
+};
+
+let serviceDownHandler = () => {
+
+};
+
+let serviceRestartHandler = () => {
+
+};
+
+let serviceStatusHandler = () => {
+
+};
+

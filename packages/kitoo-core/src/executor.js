@@ -14,7 +14,7 @@ let db = new loki('./db/kitoo.json');
 
 let RouterCollection = db.addCollection('executor-routers', {unique: ['id', 'name']});
 let ServiceCollection = db.addCollection('executor-services', {unique: ['id', 'name']});
-let ServicePackCollection = db.addCollection('executor-servicepacks', {unique: ['name']});
+let PackCollection = db.addCollection('executor-packs', {unique: ['name']});
 
 let _private = new WeakMap();
 
@@ -24,7 +24,7 @@ export default class Executor extends Node {
         super({layer});
 
         let _scope = {};
-        _scope.serviceManager = new ServiceManager(this);
+        _scope.executorManager = new ExecutorManager(this);
         _scope.dnsAddress = dns;
         _scope.bindAddress = bind;
         _private.set(this, _scope);
@@ -38,7 +38,7 @@ export default class Executor extends Node {
         
         await super.bind(_scope.bindAddress);
         await super.connect(_scope.dnsAddress);
-        _scope.serviceManager.init();
+        _scope.executorManager.init();
         _scope.started = Date.now();
         _scope.status = 'online';
         this.tickLayer(LAYERS.DNS, EVENTS.EXECUTOR.START, this.toJSON());
@@ -49,7 +49,7 @@ export default class Executor extends Node {
         let _scope = _private.get(this);
         await this.disconnect(_scope.dnsAddress);
         await this.unbind();
-        _scope.serviceManager.destroy();
+        _scope.executorManager.destroy();
         return true;
     }
 
@@ -64,7 +64,7 @@ export default class Executor extends Node {
     }
 }
 
-class ServiceManager {
+class ExecutorManager {
     constructor(executor) {
         let _scope = {
             executor : executor,
@@ -94,11 +94,12 @@ class ServiceManager {
         executor.onTick(EVENTS.DNS.ROUTER_FAIL,  proxyToLayer(LAYERS.SERVICE, EVENTS.DNS.ROUTER_FAIL));
 
         // ** Service compile and management - up/down, restart, info
-        executor.onTick(EVENTS.DNS.SERVICE_PACK_START, this::servicePackHandler);
-        executor.onTick(EVENTS.DNS.SERVICE_COMPILE_START, this::serviceCompileHandler);
-
-        executor.onTick(EVENTS.DNS.SERVICE_UP, this::serviceUpHandler);
-        executor.onTick(EVENTS.DNS.SERVICE_DOWN, this::serviceDownHandler);
+        executor.onTick(EVENTS.AGENT.SERVICE_UP, this::serviceUpHandler);
+        executor.onTick(EVENTS.AGENT.SERVICE_DOWN, this::serviceDownHandler);
+        executor.onTick(EVENTS.AGENT.SERVICE_RESTART, this::serviceRestartHandler);
+        executor.onTick(EVENTS.AGENT.SERVICE_STATUS, this::serviceStatusHandler);
+        executor.onTick(EVENTS.AGENT.SERVICE_PACK_START, this::servicePackHandler);
+        executor.onTick(EVENTS.AGENT.SERVICE_INSTALL_START, this::serviceInstallHandler);
     }
 
     destroy () {
@@ -111,12 +112,13 @@ class ServiceManager {
         executor.offTick(EVENTS.DNS.ROUTER_STOP);
         executor.offTick(EVENTS.DNS.ROUTER_FAIL);
 
-        executor.offTick(EVENTS.DNS.SERVICE_PACK_START);
-        executor.offTick(EVENTS.DNS.SERVICE_COMPILE_START);
-
-        executor.offTick(EVENTS.DNS.SERVICE_UP);
-        executor.offTick(EVENTS.DNS.SERVICE_DOWN);
-
+        executor.offTick(EVENTS.AGENT.NOTIFY);
+        executor.offTick(EVENTS.AGENT.SERVICE_UP);
+        executor.offTick(EVENTS.AGENT.SERVICE_DOWN);
+        executor.offTick(EVENTS.AGENT.SERVICE_RESTART);
+        executor.offTick(EVENTS.AGENT.SERVICE_STATUS);
+        executor.offTick(EVENTS.AGENT.SERVICE_PACK_START);
+        executor.offTick(EVENTS.AGENT.SERVICE_INSTALL_START);
     }
 }
 
@@ -126,69 +128,47 @@ let serviceUpHandler = async (servicePack) => {
     let _scope = _private.get(this);
     let serviceName = servicePack.name;
 
-    let service = ServicePackCollection.findOne( {'name':serviceName});
+    let service = PackCollection.findOne( {'name':serviceName});
     if(!service) {
-        ServicePackCollection.insert({'name':serviceName, executor : _scope.executor.toJSON()});
-        service = ServicePackCollection.findOne( {'name':serviceName});
+        PackCollection.insert({'name':serviceName, executor : _scope.executor.toJSON()});
+        service = PackCollection.findOne( {'name':serviceName});
     }
 
     // ** UNPACKING THE SERVICE
-    await servicePackHandler(servicePack);
+    if(!service.packed) {
+        await servicePackHandler(servicePack);
+    }
+
 
     // ** NPM INSTALL THE SERVICE
-    await this::serviceCompileHandler(serviceName);
-
+    if(!service.installed) {
+        await this::serviceCompileHandler(serviceName);
+    }
     // ** FORK THE SERVICE ON EXECUTOR
     await this::serviceForkHandler(serviceName);
 };
 
-let servicePackHandler = async (servicePack) => {
-    let _scope = _private.get(this);
-    let executor = _scope.executor;
+let serviceDownHandler = async (downgradeConfig) => {
 
-    let serviceName = servicePack.name;
-    console.info(`Service '${serviceName} unpacking started ....'`, Date.now());
-    await utils.unpackService(servicePack);
-    console.info(`Service '${serviceName} unpacking finished'`, Date.now());
-
-    let service = ServicePackCollection.findOne( {'name':serviceName, packed: true});
-    if(!service || !service.packed) {
-        let errTxt = `Service ${name} is not packed on executor ${executor.getId()}`;
-        executor.tickLayer(LAYERS.DNS, EVENTS.EXECUTOR.NOTIFY, errTxt);
-        throw new Error(errTxt);
-    }
-    service.packed = Date.now();
-    ServicePackCollection.update(service);
-
-    executor.tickLayer(LAYERS.DNS, EVENTS.EXECUTOR.SERVICE_PACK_FINISH, service);
 };
 
-let serviceCompileHandler = async (serviceName) => {
-    let _scope = _private.get(this);
-    let executor = _scope.executor;
-    console.info(`Service '${serviceName} compile started ....'`, Date.now());
-    await utils.npmInstallService(serviceName);
-    console.info(`Service '${serviceName} compile finished'`, Date.now());
+let serviceRestartHandler = async () => {
 
-    let service = ServicePackCollection.findOne( {'name':serviceName, packed: true});
-    if(!service || !service.packed) {
-        executor.tickLayer(LAYERS.DNS, EVENTS.EXECUTOR.NOTIFY, { status: 404, error: `Service ${name} is not packed on executor ${executor.getId()}`});
-    }
-    service.compiled = Date.now();
-    ServicePackCollection.update(service);
+};
 
-    executor.tickLayer(LAYERS.DNS, EVENTS.EXECUTOR.SERVICE_COMPILE_FINISH, service);
+let serviceStatusHandler = async () => {
+
 };
 
 let serviceForkHandler = async (name) => {
     let _scope = _private.get(this);
     let executor = _scope.executor;
 
-    let service = ServicePackCollection.findOne( {'name':name, compiled: true });
-    if(!service || !service.compiled) {
+    let service = PackCollection.findOne( {'name':name, installed: true });
+    if(!service || !service.installed) {
         // ** if we don't have compiled service lets just notify dns
-        let errTxt = `Service ${name} is not compiled on executor ${executor.getId()}`;
-        executor.tickLayer(LAYERS.DNS, EVENTS.EXECUTOR.NOTIFY, errTxt);
+        let errTxt = `Service ${name} is not installed on executor ${executor.getIdentity()}'`;
+        executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.NOTIFY, errTxt);
         throw new Error(errTxt);
     }
 
@@ -201,6 +181,43 @@ let serviceForkHandler = async (name) => {
     _scope.serviceProcessMap[serviceIdentity] = serviceProcess;
 };
 
-let serviceDownHandler = async (downgradeConfig) => {
+let servicePackHandler = async (servicePack) => {
+    let _scope = _private.get(this);
+    let executor = _scope.executor;
 
+    let serviceName = servicePack.name;
+    console.info(`Service '${serviceName} unpacking started ....'`, Date.now());
+    await utils.unpackService(servicePack);
+    console.info(`Service '${serviceName} unpacking finished'`, Date.now());
+
+    let service = PackCollection.findOne( {'name':serviceName, packed: true});
+    if(!service || !service.packed) {
+        let errTxt = `Service ${name} is not packed on executor ${executor.getId()}`;
+        executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.NOTIFY, errTxt);
+        throw new Error(errTxt);
+    }
+    service.packed = Date.now();
+    PackCollection.update(service);
+
+    executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.SERVICE_PACK_FINISH, service);
+};
+
+let serviceInstallHandler = async (serviceName) => {
+    let _scope = _private.get(this);
+    let executor = _scope.executor;
+    console.info(`Service '${serviceName} install started ....'`, Date.now());
+    await utils.npmInstallService(serviceName);
+    console.info(`Service '${serviceName} install finished'`, Date.now());
+
+    let service = PackCollection.findOne( {'name':serviceName, packed: true});
+    if(!service || !service.packed) {
+        let errTxt = `Service ${name} is not packed on executor ${executor.getIdentity()}`;
+        executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.NOTIFY, errTxt);
+        throw new Error(errTxt);
+    }
+    service.installed = Date.now();
+
+    PackCollection.update(service);
+
+    executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.SERVICE_INSTALL_FINISH, service);
 };

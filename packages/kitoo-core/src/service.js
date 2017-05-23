@@ -9,6 +9,9 @@ import Node from 'nodik-zmq';
 
 import globals from './globals';
 
+let db = new loki('./db/kitoo.json');
+let RouterCollection = db.addCollection('service-routers', {unique: ['id', 'name']});
+
 let {EVENTS,LAYER} = globals;
 let _private = new WeakMap();
 

@@ -3,16 +3,23 @@ export default  {
       DNS: 'kitoo::dnslayer',
       EXECUTOR: 'kitoo::executorlayer',
       ROUTER: 'kitoo::routerlayer',
-      SERVICE: 'kitoo::servicelayer'
+      SERVICE: 'kitoo::servicelayer',
+      AGENT: 'kitoo::agentlayer'
   },
   EVENTS: {
+      AGENT: {
+          NOTIFY: 4999,
+          SERVICE_UP : 5000,
+          SERVICE_DOWN: 5001,
+          SERVICE_RESTART: 5002,
+          SERVICE_STATUS: 5003,
+          SERVICE_PACK_START: 5004,
+          SERVICE_PACK_FINISH: 5005,
+          SERVICE_INSTALL_START: 5006,
+          SERVICE_INSTALL_FINISH: 5007
+      },
+
       EXECUTOR: {
-          // ** action ticks for dns layer
-          SERVICE_PACK_FINISH: 2000,
-          SERVICE_COMPILE_FINISH: 2001,
-          SERVICE_UP: 2002,
-          SERVICE_DOWN: 2003,
-          NOTIFY: 2004,
           // ** proxy ticks up to dns layer
           START: 2005,
           STOP: 2006,
@@ -27,14 +34,6 @@ export default  {
       },
 
       DNS: {
-          // ** action ticks for executor
-          SERVICE_COMPILE_START: 1000,
-          SERVICE_PACK_START: 1001,
-          SERVICE_UP: 1002,
-          SERVICE_DOWN:1003,
-
-          SERVICE_RESTART: 1004,
-          SERVICE_STATUS: 1005,
           // ** proxy ticks down to service layer
           ROUTER_START: 1006,
           ROUTER_STOP: 1007,
