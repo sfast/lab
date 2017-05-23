@@ -124,7 +124,7 @@ class ExecutorManager {
 
 // ** Private functions of ServiceManager
 
-let serviceUpHandler = async (servicePack) => {
+async function serviceUpHandler(servicePack) {
     let _scope = _private.get(this);
     let serviceName = servicePack.name;
 
@@ -146,21 +146,21 @@ let serviceUpHandler = async (servicePack) => {
     }
     // ** FORK THE SERVICE ON EXECUTOR
     await this::serviceForkHandler(serviceName);
-};
+}
 
-let serviceDownHandler = async (downgradeConfig) => {
+async function serviceDownHandler(downgradeConfig) {
 
-};
+}
 
-let serviceRestartHandler = async () => {
+async function serviceRestartHandler() {
 
-};
+}
 
-let serviceStatusHandler = async () => {
+async function serviceStatusHandler() {
 
-};
+}
 
-let serviceForkHandler = async (name) => {
+async function serviceForkHandler(name) {
     let _scope = _private.get(this);
     let executor = _scope.executor;
 
@@ -179,9 +179,9 @@ let serviceForkHandler = async (name) => {
     console.info(`Forking service ${name} on executor ${executorId}, service identity: ${serviceIdentity}`);
     let serviceProcess = childProcess.fork(name, forkArgs, { env: process.env, cwd: servicePath, shell : true });
     _scope.serviceProcessMap[serviceIdentity] = serviceProcess;
-};
+}
 
-let servicePackHandler = async (servicePack) => {
+async function servicePackHandler(servicePack) {
     let _scope = _private.get(this);
     let executor = _scope.executor;
 
@@ -200,9 +200,9 @@ let servicePackHandler = async (servicePack) => {
     PackCollection.update(service);
 
     executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.SERVICE_PACK_FINISH, service);
-};
+}
 
-let serviceInstallHandler = async (serviceName) => {
+async function serviceInstallHandler(serviceName) {
     let _scope = _private.get(this);
     let executor = _scope.executor;
     console.info(`Service '${serviceName} install started ....'`, Date.now());
@@ -220,4 +220,4 @@ let serviceInstallHandler = async (serviceName) => {
     PackCollection.update(service);
 
     executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.SERVICE_INSTALL_FINISH, service);
-};
+}

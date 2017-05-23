@@ -113,26 +113,26 @@ export default class Service extends Node {
     }
 }
 
-let attachHandlers = async () => {
+async function attachHandlers() {
     this.onTick(EVENTS.DNS.ROUTER_START, this::routerStartHandler);
     this.onTick(EVENTS.DNS.ROUTER_STOP, this::routerStopdHandler);
     this.onTick(EVENTS.DNS.ROUTER_FAIL, this::routerFailHandler);
-};
+}
 
-let detachHandlers = async () => {
+async function detachHandlers() {
     this.offTick(EVENTS.DNS.ROUTER_START, this::routerStartHandler);
     this.offTick(EVENTS.DNS.ROUTER_STOP, this::routerStopdHandler);
     this.offTick(EVENTS.DNS.ROUTER_FAIL, this::routerFailHandler);
-};
+}
 
-let routerStartHandler = async () => {
+async function routerStartHandler() {
 
-};
+}
 
-let routerStopdHandler = async () => {
+async function routerStopdHandler() {
 
-};
+}
 
-let routerFailHandler = async () => {
+async function routerFailHandler() {
 
-};
+}

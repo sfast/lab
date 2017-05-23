@@ -144,15 +144,15 @@ class DnsManager {
 
 // ** Executor Handlers
 
-let executorStartHandler = (data = {}) => {
+async function executorStartHandler(data = {}) {
     let {id, layer, status, started} = data;
     let _scope = _private.get(this);
     debug(`EXECUTOR.START ${id}`);
     ExecutorCollection.findAndRemove({id: id});
     ExecutorCollection.insert(data);
-};
+}
 
-let executorStopHandler = (id) => {
+async function executorStopHandler(id) {
     console.info(`Executor ${id} is stopped, setting it to offline`);
     let _scope = _private.get(this);
     let executor = ExecutorCollection.findOne({id: id});
@@ -164,25 +164,25 @@ let executorStopHandler = (id) => {
 
 // ** Service Handlers
 
-let serviceStartHandler = (data = {}) => {
+async function serviceStartHandler(data = {}) {
     let _scope = _private.get(this);
     let {id, name, layer, executorId, executorHost, status, started} = data;
     console.log(`Service ${name} : ${id} is running on executor id: ${executorId}, host: ${executorHost}`);
     ServiceCollection.insert(data);
-};
+}
 
-let serviceStopHandler = (id) => {
+async function serviceStopHandler(id) {
     let service = ServiceCollection.findOne({id:id});
     console.info(`Service ${id} (${service.name}) stopped`);
 
     ServiceCollection.findAndUpdate({id: id}, (item) => {
         item.status = 'offline';
     });
-};
+}
 
 // ** Agent Handlers
 
-let serviceUpHandler = (data = {}) => {
+async function serviceUpHandler(data = {}) {
     let {name, pack, executor} = data;
     let dns = _private.get(this).dns;
     let onlineExecutors = dns.getOnlineExecutors();
@@ -205,17 +205,17 @@ let serviceUpHandler = (data = {}) => {
 
     console.log(`Trying to run service ${name} on worker ${executor}`);
     dns.tick(executor, EVENTS.AGENT.SERVICE_UP, pack);
-};
+}
 
-let serviceDownHandler = () => {
+async function serviceDownHandler() {
 
-};
+}
 
-let serviceRestartHandler = () => {
+async function serviceRestartHandler() {
 
-};
+}
 
-let serviceStatusHandler = () => {
+async function serviceStatusHandler() {
 
-};
+}
 
