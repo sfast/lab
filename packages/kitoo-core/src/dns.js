@@ -81,10 +81,10 @@ class DnsManager {
         dns.onTick(EVENTS.SERVICE.FAIL, this::serviceStopHandler);
 
         dns.onTick(EVENTS.AGENT.NOTIFY, (data) => {console.log(data)});
-        dns.onTick(EVENTS.AGENT.SERVICE_UP,  this::serviceUpHandler());
-        dns.onTick(EVENTS.AGENT.SERVICE_DOWN,  this::serviceDownHandler());
-        dns.onTick(EVENTS.AGENT.SERVICE_RESTART,  this::serviceRestartHandler());
-        dns.onTick(EVENTS.AGENT.SERVICE_STATUS,  this::serviceStatusHandler());
+        dns.onTick(EVENTS.AGENT.SERVICE_UP,  this::serviceUpHandler);
+        dns.onTick(EVENTS.AGENT.SERVICE_DOWN,  this::serviceDownHandler);
+        dns.onTick(EVENTS.AGENT.SERVICE_RESTART,  this::serviceRestartHandler);
+        dns.onTick(EVENTS.AGENT.SERVICE_STATUS,  this::serviceStatusHandler);
     }
 
     destroy(){
@@ -106,9 +106,7 @@ class DnsManager {
     }
 
     getOnlineExecutors(){
-
         let onlineExecutorIds = [];
-
         let executors = ExecutorCollection.find({state: 'online'});
         return executors.map((executorItem) => {
             return executorItem.state == 'online';
