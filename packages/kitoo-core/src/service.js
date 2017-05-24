@@ -20,6 +20,11 @@ export default class Service extends Node {
           let {service, executor, host} = data;
           super({layer: LAYERS.SERVICE});
           // ** When creating service we are passing executorId and host via shell
+          service = yargs.argv['--kitoo::sid'];
+          executor = yargs.argv['--kitoo::exid'];
+          host = yargs.argv['--kitoo::exhost'];
+
+          console.log("Service constructor", {service, executor, host});
 
            let _scope = {};
 
