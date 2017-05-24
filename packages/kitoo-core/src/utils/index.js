@@ -1,9 +1,10 @@
 import path from 'path';
+import fse from 'fs-extra';
 import childProcess from 'child_process';
-export {default as Config} from '../config';
+import {default as Config} from '../config';
 
 let npmInstallService = async (serviceName) => {
-    let config = Config();
+    let config = await Config();
     let serviceDirRoot = config.kitooDir;
 
     let start = Date.now();
@@ -15,9 +16,8 @@ let npmInstallService = async (serviceName) => {
     return true;
 };
 
-
 let unpackService = async (servicePack = {}) => {
-    let config = Config();
+    let config = await Config();
     let serviceDirRoot = config.kitooDir;
 
     let {name, dist, packagejson, stamp} = servicePack;
@@ -36,10 +36,23 @@ let unpackService = async (servicePack = {}) => {
     return true;
 };
 
+let forkService = async(serviceIdentity, serviceName, executorId, executorHost) => {
+    let config = await Config();
+    let serviceDirRoot = config.kitooDir;
+    let servicePath = path.resolve(`${serviceDirRoot}/dist/${serviceName}`);
+    console.log("servicePath", servicePath);
+
+    let forkArgs = ['--kitoo::sid', serviceIdentity, '--kitoo::exid', executorId, '--kitoo::exhost', executorHost];
+    console.info(`Forking service ${serviceName} on executor ${executorId}, service identity: ${serviceIdentity}`);
+    return childProcess.spawn(`node ${serviceName}`, forkArgs, { env: process.env, cwd: servicePath});
+};
+
 export {npmInstallService as npmInstallService};
 export {unpackService as unpackService};
+export {forkService as forkService};
 
 export default  {
     npmInstallService: npmInstallService,
-    unpackService: unpackService
+    unpackService: unpackService,
+    forkService: forkService
 }

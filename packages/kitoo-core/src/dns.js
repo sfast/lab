@@ -2,11 +2,8 @@
  * Created by artak on 2/22/17.
  */
 
-import _ from 'underscore';
-import path from 'path'
 import Node from 'nodik-zmq';
 import loki from 'lokijs';
-import readConfig from 'read-config';
 import debugFactory from 'debug';
 
 import globals from './globals';
@@ -30,8 +27,10 @@ export default class Dns extends Node {
         let {bind, port} = data;
         super({layer: LAYERS.DNS});
 
+        let dnsManager = new DnsManager(this);
+
         let _scope = {
-            dnsManager: new DnsManager(this),
+            dnsManager: dnsManager,
             bind: bind,
             port: port
         };
@@ -58,6 +57,47 @@ export default class Dns extends Node {
         await super.unbind();
         _scope.dnsManager.destroy();
     }
+
+    getOnlineExecutors(){
+        let onlineExecutorIds = [];
+        let executors = ExecutorCollection.find({status: 'online'});
+
+        return executors
+            .filter((executorItem) => {
+                return executorItem.status == 'online';
+            })
+            .map((executorItem) => {
+                return executorItem.id;
+            });
+    }
+
+    getAnyOnlineExecutor() {
+        let onlineExecutors = this.getOnlineExecutors();
+        return onlineExecutors[Math.floor(Math.random()*onlineExecutors.length)];
+    }
+
+    isExecutorOnline(executorId) {
+        let executor = ExecutorCollection.findOne({id: executorId});
+        if(!executor) {
+            throw new Error(`Executor ${executorId} is not found.`);
+        }
+
+        return executor.status == 'online';
+    }
+
+    getServiceInfo(serviceName) {
+        let serviceMonitor = { name : serviceName, online: 0, executors : {}};
+        let services = ServiceCollection.find({name : serviceName});
+        if(!services) {
+            services = [];
+        }
+
+        services.forEach((serviceItem) => {
+            serviceMonitor.online +=1;
+        });
+
+        return serviceMonitor;
+    }
 }
 
 class DnsManager {
@@ -70,7 +110,8 @@ class DnsManager {
     }
 
     init() {
-        let dns = _private.get(this).dns;
+        let _scope = _private.get(this);
+        let dns = _scope.dns;
 
         dns.onTick(EVENTS.EXECUTOR.START, this::executorStartHandler);
         dns.onTick(EVENTS.EXECUTOR.STOP, this::executorStopHandler);
@@ -104,49 +145,12 @@ class DnsManager {
         dns.offTick(EVENTS.AGENT.SERVICE_RESTART);
         dns.offTick(EVENTS.AGENT.SERVICE_STATUS);
     }
-
-    getOnlineExecutors(){
-        let onlineExecutorIds = [];
-        let executors = ExecutorCollection.find({state: 'online'});
-        return executors.map((executorItem) => {
-            return executorItem.state == 'online';
-        });
-    }
-
-    getAnyOnlineExecutor() {
-        let onlineExecutors = this.getOnlineExecutors();
-        return onlineExecutors[Math.floor(Math.random()*onlineExecutors.length)];
-    }
-
-    isExecutorOnline(executorId) {
-        let executor = ExecutorCollection.findOne({id: executorId});
-        if(!executor) {
-            throw new Error(`Executor ${executorId} is not found.`);
-        }
-
-        return executor.state == 'online';
-    }
-
-    getServiceInfo(serviceName) {
-        let serviceMonitor = { name : serviceName, online: 0, executors : {}};
-        let services = ServiceCollection.find({name : serviceName});
-        if(!services) {
-            services = [];
-        }
-
-        services.forEach((serviceItem) => {
-            serviceMonitor.online +=1;
-        });
-
-        return serviceMonitor;
-    }
 }
 
 // ** Executor Handlers
-
 async function executorStartHandler(data = {}) {
     let {id, layer, status, started} = data;
-    let _scope = _private.get(this);
+    console.log("Executor start handler", data);
     debug(`EXECUTOR.START ${id}`);
     ExecutorCollection.findAndRemove({id: id});
     ExecutorCollection.insert(data);
@@ -184,7 +188,8 @@ async function serviceStopHandler(id) {
 
 async function serviceUpHandler(data = {}) {
     let {name, pack, executor} = data;
-    let dns = _private.get(this).dns;
+    let _scope = _private.get(this);
+    let dns = _scope.dns;
     let onlineExecutors = dns.getOnlineExecutors();
     if (!onlineExecutors.length) {
         let errTxt = `Can't run service '${name}, no online executors found`;
@@ -204,7 +209,8 @@ async function serviceUpHandler(data = {}) {
     }
 
     console.log(`Trying to run service ${name} on worker ${executor}`);
-    dns.tick(executor, EVENTS.AGENT.SERVICE_UP, pack);
+
+    dns.tick(executor, EVENTS.AGENT.SERVICE_UP, {name, pack, executor});
 }
 
 async function serviceDownHandler() {

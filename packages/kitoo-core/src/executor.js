@@ -20,8 +20,8 @@ let _private = new WeakMap();
 
 export default class Executor extends Node {
     constructor(data = {}) {
-        let {layer, bind, dns} = data;
-        super({layer});
+        let {bind, dns} = data;
+        super({layer : LAYERS.EXECUTOR});
 
         let _scope = {};
         _scope.executorManager = new ExecutorManager(this);
@@ -31,11 +31,12 @@ export default class Executor extends Node {
     }
 
     // TODO @avar dnsHost and bind default values, and we also have them in constructor
-    async start(dnsHost, bind = 6001) {
+    async start(data = {}) {
+        let {dns, bind = 6001} = data;
         let _scope = _private.get(this);
-        _scope.dnsAddress = dnsHost ? dnsHost : _scope.dnsAddress;
+        _scope.dnsAddress = dns ? dns : _scope.dnsAddress;
         _scope.bindAddress = _.isNumber(bind) ?  `tcp://127.0.0.1:${bind}` : bind;
-        
+
         await super.bind(_scope.bindAddress);
         await super.connect(_scope.dnsAddress);
         _scope.executorManager.init();
@@ -47,9 +48,9 @@ export default class Executor extends Node {
 
     async stop() {
         let _scope = _private.get(this);
+        _scope.executorManager.destroy();
         await this.disconnect(_scope.dnsAddress);
         await this.unbind();
-        _scope.executorManager.destroy();
         return true;
     }
 
@@ -103,7 +104,9 @@ class ExecutorManager {
     }
 
     destroy () {
-        let executor = _private.get(this).executor;
+        let _scope = _private.get(this);
+        let executor = _scope.executor;
+
         executor.offTick(EVENTS.SERVICE.START);
         executor.offTick(EVENTS.SERVICE.STOP);
         executor.offTick(EVENTS.SERVICE.FAIL);
@@ -124,28 +127,28 @@ class ExecutorManager {
 
 // ** Private functions of ServiceManager
 
-async function serviceUpHandler(servicePack) {
+async function serviceUpHandler(servicePack = {}) {
+    let {name, pack, executor} = servicePack;
     let _scope = _private.get(this);
-    let serviceName = servicePack.name;
 
-    let service = PackCollection.findOne( {'name':serviceName});
+    let service = PackCollection.findOne( {'name':name});
     if(!service) {
-        PackCollection.insert({'name':serviceName, executor : _scope.executor.toJSON()});
-        service = PackCollection.findOne( {'name':serviceName});
+        PackCollection.insert({'name':name, executor : executor});
+        service = PackCollection.findOne( {'name':name});
     }
 
     // ** UNPACKING THE SERVICE
     if(!service.packed) {
-        await servicePackHandler(servicePack);
+        await this::servicePackHandler(pack);
     }
-
 
     // ** NPM INSTALL THE SERVICE
     if(!service.installed) {
-        await this::serviceCompileHandler(serviceName);
+        await this::serviceInstallHandler(name);
     }
     // ** FORK THE SERVICE ON EXECUTOR
-    await this::serviceForkHandler(serviceName);
+    await this::serviceForkHandler(name);
+
 }
 
 async function serviceDownHandler(downgradeConfig) {
@@ -161,41 +164,43 @@ async function serviceStatusHandler() {
 }
 
 async function serviceForkHandler(name) {
-    let _scope = _private.get(this);
-    let executor = _scope.executor;
+    try {
+        let _scope = _private.get(this);
+        let executor = _scope.executor;
+        let executorId = executor.getId();
+        let serviceIdentity = uuid.v4();
+        let executorHost = executor.getAddress();
 
-    let service = PackCollection.findOne( {'name':name, installed: true });
-    if(!service || !service.installed) {
-        // ** if we don't have compiled service lets just notify dns
-        let errTxt = `Service ${name} is not installed on executor ${executor.getIdentity()}'`;
-        executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.NOTIFY, errTxt);
-        throw new Error(errTxt);
+        let service = PackCollection.findOne( {'name':name});
+        if(!service || !service.installed) {
+            // ** if we don't have compiled service lets just notify dns
+            let errTxt = `Service ${name} is not installed on executor ${executorId}'`;
+            executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.NOTIFY, errTxt);
+            throw new Error(errTxt);
+        }
+
+        let serviceProcess = await utils.forkService(serviceIdentity, name, executorId, executorHost).catch((err)=> {console.log("CCC", err);});
+        _scope.serviceProcessMap[serviceIdentity] = serviceProcess;
+    } catch (err) {
+
     }
-
-    let serviceIdentity = uuid.v4();
-    let executorId = executor.getId();
-    let executorHost = executor.getAddress();
-    let forkArgs = ['--kitoo::sid', serviceIdentity, '--kitoo::exid', executorId, '--kitoo::exhost', executorHost];
-    console.info(`Forking service ${name} on executor ${executorId}, service identity: ${serviceIdentity}`);
-    let serviceProcess = childProcess.fork(name, forkArgs, { env: process.env, cwd: servicePath, shell : true });
-    _scope.serviceProcessMap[serviceIdentity] = serviceProcess;
 }
 
 async function servicePackHandler(servicePack) {
     let _scope = _private.get(this);
     let executor = _scope.executor;
-
     let serviceName = servicePack.name;
+
+    let service = PackCollection.findOne( {name:serviceName});
+    if(!service) {
+        PackCollection.insert({name: serviceName});
+        service = PackCollection.findOne({name: serviceName});
+    }
+
     console.info(`Service '${serviceName} unpacking started ....'`, Date.now());
     await utils.unpackService(servicePack);
-    console.info(`Service '${serviceName} unpacking finished'`, Date.now());
+    console.info(`Service '${serviceName}' unpacking finished`, Date.now());
 
-    let service = PackCollection.findOne( {'name':serviceName, packed: true});
-    if(!service || !service.packed) {
-        let errTxt = `Service ${name} is not packed on executor ${executor.getId()}`;
-        executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.NOTIFY, errTxt);
-        throw new Error(errTxt);
-    }
     service.packed = Date.now();
     PackCollection.update(service);
 
@@ -205,18 +210,19 @@ async function servicePackHandler(servicePack) {
 async function serviceInstallHandler(serviceName) {
     let _scope = _private.get(this);
     let executor = _scope.executor;
+
+    let service = PackCollection.findOne( {'name':serviceName, packed: true});
+    if(!service || !service.packed) {
+        let errTxt = `Service ${name} is not packed on executor ${executor.getId()}`;
+        executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.NOTIFY, errTxt);
+        throw new Error(errTxt);
+    }
+
     console.info(`Service '${serviceName} install started ....'`, Date.now());
     await utils.npmInstallService(serviceName);
     console.info(`Service '${serviceName} install finished'`, Date.now());
 
-    let service = PackCollection.findOne( {'name':serviceName, packed: true});
-    if(!service || !service.packed) {
-        let errTxt = `Service ${name} is not packed on executor ${executor.getIdentity()}`;
-        executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.NOTIFY, errTxt);
-        throw new Error(errTxt);
-    }
     service.installed = Date.now();
-
     PackCollection.update(service);
 
     executor.tickLayer(LAYERS.AGENT, EVENTS.AGENT.SERVICE_INSTALL_FINISH, service);

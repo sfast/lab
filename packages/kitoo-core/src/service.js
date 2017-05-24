@@ -12,13 +12,13 @@ import globals from './globals';
 let db = new loki('./db/kitoo.json');
 let RouterCollection = db.addCollection('service-routers', {unique: ['id', 'name']});
 
-let {EVENTS,LAYER} = globals;
+let {EVENTS,LAYERS} = globals;
 let _private = new WeakMap();
 
 export default class Service extends Node {
       constructor(data = {}) {
-          let {service, executor, host, layer} = data;
-          super({layer: layer});
+          let {service, executor, host} = data;
+          super({layer: LAYERS.SERVICE});
           // ** When creating service we are passing executorId and host via shell
 
            let _scope = {};
