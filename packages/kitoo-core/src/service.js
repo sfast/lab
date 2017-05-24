@@ -6,6 +6,7 @@ import _ from 'underscore';
 import uuid from 'uuid';
 import loki from 'lokijs';
 import Node from 'nodik-zmq';
+import yargs from 'yargs';
 
 import globals from './globals';
 
