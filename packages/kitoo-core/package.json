@@ -5,7 +5,7 @@
   "main": "./dist",
   "scripts": {
     "test": "mocha --require babel-core/register",
-    "compile": "./node_modules/babel-cli/bin/babel.js --presets es2017 -d dist/ src/",
+    "compile": "./node_modules/babel-cli/bin/babel.js -d dist/ src/",
     "prepublish": "npm run compile",
     "doc": "./node_modules/.bin/jsdoc -c jsdoc.json"
   },
