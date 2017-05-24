@@ -44,7 +44,7 @@ let forkService = async(serviceIdentity, serviceName, executorId, executorHost) 
 
     let forkArgs = ['--kitoo::sid', serviceIdentity, '--kitoo::exid', executorId, '--kitoo::exhost', executorHost];
     console.info(`Forking service ${serviceName} on executor ${executorId}, service identity: ${serviceIdentity}`);
-    return childProcess.fork(`${serviceName}`, forkArgs, { env: process.env, cwd: servicePath});
+    return childProcess.fork('index.js', forkArgs, { env: process.env, cwd: servicePath});
 };
 
 export {npmInstallService as npmInstallService};
