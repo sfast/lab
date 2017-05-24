@@ -30,7 +30,7 @@
     "bluebird": "^3.4.7",
     "fs-extra": "^3.0.1",
     "lokijs": "^1.4.3",
-    "nodik-zmq": "^1.0.9",
+    "nodik-zmq": "^1.0.14",
     "read-config": "^2.0.0",
     "underscore": "latest",
     "uuid": "^3.0.1",
