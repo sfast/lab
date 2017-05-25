@@ -2,9 +2,6 @@
  * Created by artak on 2/22/17.
  */
 
-import path from 'path';
-import fse from 'fs-extra';
-
 import globals from './globals'
 let {EVENTS, LAYERS} = globals;
 

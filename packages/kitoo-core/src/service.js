@@ -119,26 +119,26 @@ export default class Service extends Node {
     }
 }
 
-async function attachHandlers() {
+function attachHandlers() {
     this.onTick(EVENTS.DNS.ROUTER_START, this::routerStartHandler);
     this.onTick(EVENTS.DNS.ROUTER_STOP, this::routerStopdHandler);
     this.onTick(EVENTS.DNS.ROUTER_FAIL, this::routerFailHandler);
 }
 
-async function detachHandlers() {
+function detachHandlers() {
     this.offTick(EVENTS.DNS.ROUTER_START, this::routerStartHandler);
     this.offTick(EVENTS.DNS.ROUTER_STOP, this::routerStopdHandler);
     this.offTick(EVENTS.DNS.ROUTER_FAIL, this::routerFailHandler);
 }
 
-async function routerStartHandler() {
+function routerStartHandler() {
 
 }
 
-async function routerStopdHandler() {
+function routerStopdHandler() {
 
 }
 
-async function routerFailHandler() {
+function routerFailHandler() {
 
 }
