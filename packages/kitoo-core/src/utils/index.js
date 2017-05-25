@@ -5,7 +5,7 @@ import {default as Config} from '../config';
 
 let npmInstallService = async (serviceName) => {
     let config = await Config();
-    let serviceDirRoot = config.kitooDir;
+    let serviceDirRoot = config.dir;
 
     let start = Date.now();
     console.info(`Starting service ${serviceName} npm install.`);
@@ -18,7 +18,7 @@ let npmInstallService = async (serviceName) => {
 
 let unpackService = async (servicePack = {}) => {
     let config = await Config();
-    let serviceDirRoot = config.kitooDir;
+    let serviceDirRoot = config.dir;
 
     let {name, dist, packagejson, stamp} = servicePack;
     let start = Date.now();
@@ -38,7 +38,7 @@ let unpackService = async (servicePack = {}) => {
 
 let forkService = async(serviceIdentity, serviceName, executorId, executorHost) => {
     let config = await Config();
-    let serviceDirRoot = config.kitooDir;
+    let serviceDirRoot = config.dir;
     let servicePath = path.resolve(`${serviceDirRoot}/dist/${serviceName}`);
     console.log("servicePath", servicePath);
 

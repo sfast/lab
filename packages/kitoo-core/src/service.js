@@ -20,6 +20,7 @@ export default class Service extends Node {
       constructor(data = {}) {
           let {service, executor, host} = data;
           super({layer: LAYERS.SERVICE});
+
           // ** When creating service we are passing executorId and host via shell
           service = yargs.argv['--kitoo::sid'];
           executor = yargs.argv['--kitoo::exid'];
@@ -30,7 +31,6 @@ export default class Service extends Node {
            let _scope = {};
 
            let _onConnect = async () => {
-
                 let handlers = {};
                 for (let name of Object.getOwnPropertyNames(Object.getPrototypeOf(this))) {
                     let method = this[name];
@@ -48,15 +48,15 @@ export default class Service extends Node {
 
                 // ** Attach handlers
                 this::attachHandlers();
+
                 _scope = {  id: ['service', service, uuid.v4()].join('::'),
                             name : service,
-                            layer: this.getLayer(),
+                            layer: LAYERS.SERVICE,
                             executorId : executor,
                             executorHost : host,
                             status: 'online',
                             started: Date.now(),
-                            handlers : handlers
-                };
+                            handlers : handlers };
 
                _private.set(this, _scope);
 
@@ -93,9 +93,9 @@ export default class Service extends Node {
 
         handlers.keys().forEach((fnName) => {
             let handlerFn = handlers[fnName];
-            _scope.offTick(fnName);
-            _scope.offRequest(fnName);
-        });
+            this.offTick(fnName);
+            this.offRequest(fnName);
+        }, this);
 
         this::detachHandlers();
         _scope.status = 'offline';
@@ -119,26 +119,26 @@ export default class Service extends Node {
     }
 }
 
-function attachHandlers() {
+let attachHandlers = () => {
     this.onTick(EVENTS.DNS.ROUTER_START, this::routerStartHandler);
     this.onTick(EVENTS.DNS.ROUTER_STOP, this::routerStopdHandler);
     this.onTick(EVENTS.DNS.ROUTER_FAIL, this::routerFailHandler);
-}
+};
 
-function detachHandlers() {
+let detachHandlers = () => {
     this.offTick(EVENTS.DNS.ROUTER_START, this::routerStartHandler);
     this.offTick(EVENTS.DNS.ROUTER_STOP, this::routerStopdHandler);
     this.offTick(EVENTS.DNS.ROUTER_FAIL, this::routerFailHandler);
-}
+};
 
-function routerStartHandler() {
+let routerStartHandler = () => {
 
-}
+};
 
-function routerStopdHandler() {
+let routerStopdHandler = () => {
 
-}
+};
 
-function routerFailHandler() {
+let routerFailHandler = () => {
 
-}
+};

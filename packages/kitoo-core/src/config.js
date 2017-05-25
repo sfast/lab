@@ -4,7 +4,7 @@ import path from 'path';
 let _config = null;
 
 let defaultConf = {
-    "kitooDir" : "./kitoos",
+    "dir" : "./kitoos",
     "any" : 1
 };
 
