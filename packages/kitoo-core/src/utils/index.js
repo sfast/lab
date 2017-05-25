@@ -3,6 +3,15 @@ import fse from 'fs-extra';
 import childProcess from 'child_process';
 import {default as Config} from '../config';
 
+var oldFork = childProcess.fork;
+function myFork() {
+    console.log('spawn called');
+    console.log(arguments);
+    var result = oldFork.apply(this, arguments);
+    return result;
+}
+childProcess.fork = myFork;
+
 let npmInstallService = async (serviceName) => {
     let config = await Config();
     let serviceDirRoot = config.dir;
@@ -39,12 +48,14 @@ let unpackService = async (servicePack = {}) => {
 let forkService = async(serviceIdentity, serviceName, executorId, executorHost) => {
     let config = await Config();
     let serviceDirRoot = config.dir;
-    let servicePath = path.resolve(`${serviceDirRoot}/dist/${serviceName}`);
+    let servicePath = path.resolve(`${serviceDirRoot}/dist/${serviceName}/index.js`);
     console.log("servicePath", servicePath);
 
-    let forkArgs = ['--kitoo::sid', serviceIdentity, '--kitoo::exid', executorId, '--kitoo::exhost', executorHost];
+    let forkArgs = ['--kitooServiceId', serviceIdentity, '--kitooExecutorId', executorId, '--kitooExecutorHost', executorHost];
     console.info(`Forking service ${serviceName} on executor ${executorId}, service identity: ${serviceIdentity}`);
-    return childProcess.fork('index.js', forkArgs, { env: process.env, cwd: servicePath});
+    let serviceProcess = childProcess.fork(servicePath, forkArgs);
+    serviceProcess.on('error', ( err ) => { throw err });
+    return serviceProcess;
 };
 
 export {npmInstallService as npmInstallService};

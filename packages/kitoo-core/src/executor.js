@@ -125,7 +125,7 @@ class ExecutorManager {
 
 // ** Private functions of ServiceManager
 
-let  serviceUpHandler = async (servicePack = {}) => {
+async function serviceUpHandler(servicePack = {}) {
     let {name, pack, executor} = servicePack;
 
     let service = PackCollection.findOne( {'name':name});
@@ -147,19 +147,19 @@ let  serviceUpHandler = async (servicePack = {}) => {
     await this::serviceForkHandler(name);
 };
 
-let serviceDownHandler = async (downgradeConfig) => {
+function serviceDownHandler(downgradeConfig) {
 
-};
+}
 
-let serviceRestartHandler = async () => {
+function serviceRestartHandler() {
 
-};
+}
 
-let serviceStatusHandler = async () => {
+function serviceStatusHandler() {
 
-};
+}
 
-let serviceForkHandler = async (name) => {
+async function serviceForkHandler(name) {
     let serviceIdentity = uuid.v4();
     let executorId = this.getId();
     let executorHost = this.getAddress();
@@ -174,9 +174,9 @@ let serviceForkHandler = async (name) => {
 
     let serviceProcess = await utils.forkService(serviceIdentity, name, executorId, executorHost).catch((err)=> {console.log("CCC", err);});
     return serviceProcess;
-};
+}
 
-let  servicePackHandler = async (servicePack) => {
+async function servicePackHandler(servicePack) {
     let serviceName = servicePack.name;
 
     let service = PackCollection.findOne( {name:serviceName});
@@ -193,9 +193,9 @@ let  servicePackHandler = async (servicePack) => {
     PackCollection.update(service);
 
     this.tickLayer(LAYERS.AGENT, EVENTS.AGENT.SERVICE_PACK_FINISH, service);
-};
+}
 
-let serviceInstallHandler = async (serviceName) => {
+async function serviceInstallHandler(serviceName) {
     let service = PackCollection.findOne( {'name':serviceName, packed: true});
     if(!service || !service.packed) {
         let errTxt = `Service ${name} is not packed on executor ${this.getId()}`;
@@ -211,4 +211,4 @@ let serviceInstallHandler = async (serviceName) => {
     PackCollection.update(service);
 
     this.tickLayer(LAYERS.AGENT, EVENTS.AGENT.SERVICE_INSTALL_FINISH, service);
-};
+}

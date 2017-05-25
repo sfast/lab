@@ -20,11 +20,12 @@ export default class Service extends Node {
       constructor(data = {}) {
           let {service, executor, host} = data;
           super({layer: LAYERS.SERVICE});
-
+          console.log("FFF::AVAR", service);
+          console.log(yargs.argv);
           // ** When creating service we are passing executorId and host via shell
-          service = yargs.argv['--kitoo::sid'];
-          executor = yargs.argv['--kitoo::exid'];
-          host = yargs.argv['--kitoo::exhost'];
+          service = yargs.argv['kitooServiceId'];
+          executor = yargs.argv['kitooExecutorId'];
+          host = yargs.argv['kitooExecutorHost'];
 
           console.log("Service constructor", {service, executor, host});
 
@@ -119,26 +120,26 @@ export default class Service extends Node {
     }
 }
 
-let attachHandlers = () => {
+function attachHandlers() {
     this.onTick(EVENTS.DNS.ROUTER_START, this::routerStartHandler);
     this.onTick(EVENTS.DNS.ROUTER_STOP, this::routerStopdHandler);
     this.onTick(EVENTS.DNS.ROUTER_FAIL, this::routerFailHandler);
-};
+}
 
-let detachHandlers = () => {
+function detachHandlers() {
     this.offTick(EVENTS.DNS.ROUTER_START, this::routerStartHandler);
     this.offTick(EVENTS.DNS.ROUTER_STOP, this::routerStopdHandler);
     this.offTick(EVENTS.DNS.ROUTER_FAIL, this::routerFailHandler);
-};
+}
 
-let routerStartHandler = () => {
+function routerStartHandler() {
 
-};
+}
 
-let routerStopdHandler = () => {
+function routerStopdHandler() {
 
-};
+}
 
-let routerFailHandler = () => {
+function routerFailHandler() {
 
-};
+}
