@@ -3,13 +3,14 @@
  */
 
 import globals from './globals'
-let {EVENTS, LAYERS} = globals;
 
-export {default as Dns} from './dns';
-export {default as Executor} from './executor';
-export {default as Service} from './service';
-export {default as Utils} from './utils';
-export {default as Config} from './config';
+let {EVENTS} = globals;
 
-export {EVENTS as Events};
-export {LAYERS as Layers};
+export {Storage, getStorageInstance, setStorageInstance} from './storage'
+
+export {default as Router} from './routerService'
+export {default as Service} from './serviceBase'
+export {default as Network} from './networkService'
+export {default as Errors} from './errors'
+
+export {EVENTS}
