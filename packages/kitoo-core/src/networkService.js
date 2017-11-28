@@ -32,7 +32,7 @@ export default class NetworkService extends ServiceBase {
         this.on(NodeEvents.SERVER_STOP, this::_routerStopHandler)
     }
 
-    async connect(routerAddress) {
+    async connect(routerAddress, timeout) {
         if (this.getStatus() != 'online') {
             throw 'you first need to start network service then start connect to routers'
         }
@@ -41,7 +41,7 @@ export default class NetworkService extends ServiceBase {
             router = this.addRouter(routerAddress)
         }
         if (!router.connected) {
-            let {options, actorId} = await super.connect(router.address);
+            let {options, actorId} = await super.connect(router.address, timeout);
             router.options = options;
             router.id = actorId;
             router.connected = true;
@@ -225,7 +225,6 @@ async function _routerStopHandler(routerInfo) {
 
 async function _routerFailureHandler(routerInfo) {
     try {
-        console.log('router fail', routerInfo);
         await this.removeRouter(routerInfo.address);
         this.logger.info(`router failed with address/id - ${routerInfo.address}/${routerInfo.id}`)
     } catch (err) {
