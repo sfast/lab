@@ -37,6 +37,23 @@ export default class RouterService extends ServiceBase {
         this.onRequest(EVENTS.ROUTER.MESSAGE, this::_routerRequestMessageHandler)
     }
 
+    async connectToExistingNetwork(routerAddress) {
+        if (this.getStatus() != 'online') {
+            throw 'need to start router before connecting to network';
+        }
+
+        let { actorId } = await this.connect(routerAddress);
+
+        this.tick({ to: actorId, event: EVENTS.ROUTER.MESSAGE, data: {
+            type: EVENTS.ROUTER.MESSAGE_TYPES.BROADCAST,
+            filter: {},
+            event: EVENTS.NETWORK.NEW_ROUTER,
+            data:this.getAddress()
+        } });
+
+        await this.disconnect(routerAddress);
+    }
+
     async stop() {
         if (!this.getStatus()) {
             return
@@ -50,10 +67,12 @@ export default class RouterService extends ServiceBase {
 async function _serviceWelcomeHandler({id, options}) {
     try {
         let service = await storage.findOne(collections.NETWORKS, {routerId: this.getId(), id});
+
         if (service) {
             service.status = true;
             return await storage.update(collections.NETWORKS, service)
         }
+
         return await storage.insert(collections.NETWORKS,{id, options, status: true, routerId: this.getId()})
     } catch (err) {
         this.logger.error(`error while welcoming service: ${err}`)
@@ -76,23 +95,23 @@ async function _serviceFailOrStopHandler({id}) {
 
 function _routerTickMessageHandler(routeMessage) {
     try {
-        let {type,id,  event, data, filter} = routeMessage;
+        let {type, id, event, data, filter} = routeMessage;
         //TODO :: some higher level checking if there is service with that filter
         switch (type) {
             case EVENTS.ROUTER.MESSAGE_TYPES.BROADCAST:
                 filter = deserializeObject(filter);
-                this.tickAll(event, data, filter);
+                this.tickAll({ event, data, filter });
                 break;
             case EVENTS.ROUTER.MESSAGE_TYPES.EMIT_ANY:
                 filter = deserializeObject(filter);
-                this.tickAny(event, data, filter);
+                this.tickAny({ event, data, filter });
                 break;
             case EVENTS.ROUTER.MESSAGE_TYPES.EMIT_TO:
-                this.tick(id, event, data);
+                this.tick({ to: id, event, data });
                 break;
         }
     } catch (err) {
-        this.logger.error(`error while handling service message: ${err}`)
+        this.logger.error(`error while handling service message:`, err)
     }
 }
 
@@ -105,10 +124,10 @@ async function _routerRequestMessageHandler(request){
         switch (type) {
             case EVENTS.ROUTER.MESSAGE_TYPES.EMIT_ANY:
                 filter = deserializeObject(filter);
-                serviceResponse =  await this.requestAny(event, data, timeout, filter);
+                serviceResponse =  await this.requestAny({ endpoint: event, data, timeout, filter });
                 break;
             case EVENTS.ROUTER.MESSAGE_TYPES.EMIT_TO:
-                serviceResponse =  await this.request(id, event, data, timeout);
+                serviceResponse =  await this.request({ to: id, endpoint: event, data, timeout });
                 break;
         }
         reply(serviceResponse)

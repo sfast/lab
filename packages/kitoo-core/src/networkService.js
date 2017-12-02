@@ -38,7 +38,7 @@ export default class NetworkService extends ServiceBase {
         }
         let router = await storage.findOne(collections.ROUTERS, {address: routerAddress, networkId: this.getId()});
         if (!router) {
-            router = this.addRouter(routerAddress)
+            router = await this.addRouter(routerAddress)
         }
         if (!router.connected) {
             let {options, actorId} = await super.connect(router.address, timeout);
@@ -98,23 +98,24 @@ export default class NetworkService extends ServiceBase {
             return this.connect(router.address)
         });
         await Promise.all(connectionPromises);
+
         this.onTick(EVENTS.NETWORK.NEW_ROUTER, this::_newRouterHandler)
     }
 
     async stop() {
-        this.tickAll(EVENTS.NETWORK.STOP, this.getOptions());
+        this.tickAll({ event: EVENTS.NETWORK.STOP, data: this.getOptions() });
         await super.stop();
         this.offTick(EVENTS.NETWORK.NEW_ROUTER)
     }
 
-    proxyTick (id, event, data) {
+    proxyTick ({ to, event, data }) {
         try {
-            this.tickAny(EVENTS.ROUTER.MESSAGE, {
+            this.tickAny({ event: EVENTS.ROUTER.MESSAGE, data: {
                 type: EVENTS.ROUTER.MESSAGE_TYPES.EMIT_TO,
-                id,
+                id: to,
                 event,
                 data
-            })
+            } })
         } catch (err) {
             if (err.code == ErrorCodes.NO_NODE) {
                 throw {code: Errors.NO_ONLINE_ROUTER, message: 'there is no online router'}
@@ -122,15 +123,15 @@ export default class NetworkService extends ServiceBase {
         }
     }
 
-    proxyTickAny(event, data, filter = {}) {
+    proxyTickAny({ event, data, filter = {} }) {
         try {
             filter = serializeObject(filter);
-            this.tickAny(EVENTS.ROUTER.MESSAGE, {
+            this.tickAny({ event: EVENTS.ROUTER.MESSAGE, data: {
                 type: EVENTS.ROUTER.MESSAGE_TYPES.EMIT_ANY,
                 event,
                 data,
                 filter
-            })
+            } })
         } catch (err) {
             if (err.code == ErrorCodes.NO_NODE) {
                 throw {code: Errors.NO_ONLINE_ROUTER, message: 'there is no online router'}
@@ -138,15 +139,16 @@ export default class NetworkService extends ServiceBase {
         }
     }
 
-    proxyTickAll(event, data, filter = {}) {
+    proxyTickAll({ event, data, filter = {} }) {
         try {
-            filter = serializeObject(filter)
-            this.tickAny(EVENTS.ROUTER.MESSAGE, {
+            filter = serializeObject(filter);
+
+            this.tickAny({ event: EVENTS.ROUTER.MESSAGE, data: {
                 type: EVENTS.ROUTER.MESSAGE_TYPES.BROADCAST,
                 event,
                 data,
                 filter
-            })
+            } })
         } catch (err) {
             if (err.code == ErrorCodes.NO_NODE) {
                 throw {code: Errors.NO_ONLINE_ROUTER, message: 'there is no online router'}
@@ -154,16 +156,22 @@ export default class NetworkService extends ServiceBase {
         }
     }
 
-    async proxyRequestAny(event, data, timeout = 5000, filter = {}) {
+    async proxyRequestAny({ event, data, timeout, filter = {} }) {
         try {
             filter = serializeObject(filter);
-            return await this.requestAny(EVENTS.ROUTER.MESSAGE, {
-                type: EVENTS.ROUTER.MESSAGE_TYPES.EMIT_ANY,
-                event,
-                data,
-                timeout,
-                filter
-            }, timeout)
+
+            let requestObject = {
+                endpoint: EVENTS.ROUTER.MESSAGE,
+                data: {
+                    type: EVENTS.ROUTER.MESSAGE_TYPES.EMIT_ANY,
+                    event,
+                    data,
+                    timeout,
+                    filter
+                },
+                timeout
+            };
+            return await this.requestAny(requestObject)
         } catch (err) {
             if (err.code == ErrorCodes.NO_NODE) {
                 throw {code: Errors.NO_ONLINE_ROUTER, message: 'there is no online router'}
@@ -172,15 +180,21 @@ export default class NetworkService extends ServiceBase {
         }
     }
 
-    async proxyRequest(id, event, data, timeout = 5000) {
+    async proxyRequest({ to, event, data, timeout }) {
         try {
-            return await this.requestAny(EVENTS.ROUTER.MESSAGE, {
-                type: EVENTS.ROUTER.MESSAGE_TYPES.EMIT_TO,
-                id,
-                event,
-                data,
+            let requestOnject = {
+                endpoint: EVENTS.ROUTER.MESSAGE,
+                data: {
+                    type: EVENTS.ROUTER.MESSAGE_TYPES.EMIT_TO,
+                    id: to,
+                    event,
+                    data,
+                    timeout
+                },
                 timeout
-            }, timeout)
+            };
+
+            return await this.requestAny(requestOnject)
         } catch (err) {
             if (err.code == ErrorCodes.NO_NODE) {
                 throw {code: Errors.NO_ONLINE_ROUTER, message: 'there is no online router'}
@@ -192,14 +206,14 @@ export default class NetworkService extends ServiceBase {
     getService(serviceName) {
         let self = this;
         return {
-            tickAny: (event, data) => {
-                self.proxyTickAny(event, data, {serviceName})
+            tickAny: ({ event, data }) => {
+                self.proxyTickAny({ event, data, filter: {serviceName} })
             },
-            tickAll: (event, data) => {
-                self.proxyTickAll(event, data, {serviceName})
+            tickAll: ({ event, data }) => {
+                self.proxyTickAll({ event, data, filter: {serviceName} })
             },
-            requestAny: async (event, data, timeout) => {
-                return await self.proxyRequestAny(event, data, timeout, {serviceName})
+            requestAny: async ({ event, data, timeout }) => {
+                return await self.proxyRequestAny({ event, data, timeout, filter: {serviceName} })
             }
         }
     }
