@@ -161,7 +161,7 @@ export default class NetworkService extends ServiceBase {
             filter = serializeObject(filter);
 
             let requestObject = {
-                endpoint: EVENTS.ROUTER.MESSAGE,
+                event: EVENTS.ROUTER.MESSAGE,
                 data: {
                     type: EVENTS.ROUTER.MESSAGE_TYPES.EMIT_ANY,
                     event,
@@ -183,7 +183,7 @@ export default class NetworkService extends ServiceBase {
     async proxyRequest({ to, event, data, timeout }) {
         try {
             let requestOnject = {
-                endpoint: EVENTS.ROUTER.MESSAGE,
+                event: EVENTS.ROUTER.MESSAGE,
                 data: {
                     type: EVENTS.ROUTER.MESSAGE_TYPES.EMIT_TO,
                     id: to,

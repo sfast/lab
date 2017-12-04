@@ -40,7 +40,7 @@ describe ('manyRouters', () => {
             assert.deepEqual(msg, data);
             done()
         });
-        service2.proxyTick(service1.getId(), 'foobar', data);
+        service2.proxyTick({ to: service1.getId(), event: 'foobar', data });
     });
 
     it('request To Service With Id Timeout', (done) => {
@@ -48,9 +48,9 @@ describe ('manyRouters', () => {
         service1.onRequest('foobar', (msg) => {
             assert.deepEqual(msg.body, data);
         });
-        service2.proxyRequest(service1.getId(), 'foobar', data, 500)
+        service2.proxyRequest({ to: service1.getId(), event: 'foobar', data, timeout: 500 })
             .catch(err => {
-                assert.include(err, 'timeout');
+                assert.include(err.message, 'timeout');
                 done();
             })
     });
@@ -61,7 +61,7 @@ describe ('manyRouters', () => {
             assert.deepEqual(msg.body, data);
             msg.reply(data);
         });
-        service2.proxyRequest(service1.getId(), 'foobar', data)
+        service2.proxyRequest({ to: service1.getId(), event: 'foobar', data })
             .then(msg => {
                 assert.deepEqual(msg, data);
                 done();
@@ -74,7 +74,7 @@ describe ('manyRouters', () => {
             assert.deepEqual(msg, data);
             done()
         });
-        service2.getService(service1.getName()).tickAny('foobar', data);
+        service2.getService(service1.getName()).tickAny({ event: 'foobar', data });
     });
 
     it('request Any Service Timeout', (done) => {
@@ -82,9 +82,9 @@ describe ('manyRouters', () => {
         service1.onRequest('foobar', (msg) => {
             assert.deepEqual(msg.body, data);
         });
-        service2.getService(service1.getName()).requestAny('foobar', data, 500)
+        service2.getService(service1.getName()).requestAny({ event: 'foobar', data, timeout: 500 })
             .catch(err => {
-                assert.include(err, 'timeout');
+                assert.include(err.message, 'timeout');
                 done();
             })
     });
@@ -95,7 +95,7 @@ describe ('manyRouters', () => {
             assert.deepEqual(msg.body, data);
             msg.reply(data);
         });
-        service2.getService(service1.getName()).requestAny('foobar', data)
+        service2.getService(service1.getName()).requestAny({ event: 'foobar', data })
             .then(msg => {
                 assert.deepEqual(msg, data);
                 done();
@@ -108,6 +108,6 @@ describe ('manyRouters', () => {
             assert.deepEqual(msg, data);
             done()
         });
-        service2.getService(service1.getName()).tickAll('foobar', data);
+        service2.getService(service1.getName()).tickAll({ event: 'foobar', data });
     });
 });

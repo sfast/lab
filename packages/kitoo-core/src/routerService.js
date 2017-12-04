@@ -124,10 +124,10 @@ async function _routerRequestMessageHandler(request){
         switch (type) {
             case EVENTS.ROUTER.MESSAGE_TYPES.EMIT_ANY:
                 filter = deserializeObject(filter);
-                serviceResponse =  await this.requestAny({ endpoint: event, data, timeout, filter });
+                serviceResponse =  await this.requestAny({ event, data, timeout, filter });
                 break;
             case EVENTS.ROUTER.MESSAGE_TYPES.EMIT_TO:
-                serviceResponse =  await this.request({ to: id, endpoint: event, data, timeout });
+                serviceResponse =  await this.request({ to: id, event, data, timeout });
                 break;
         }
         reply(serviceResponse)
