@@ -4,71 +4,71 @@
 
 import shortid from 'shortid'
 import Node from 'zeronode'
-import _ from 'underscore'
+import { ServiceStatus } from './enum'
 
-let _private = new WeakMap();
+let _private = new WeakMap()
 
 export default class ServiceBase extends Node {
+  constructor ({ id, name, bind, options } = {}) {
+    id = id || `service::${shortid.generate()}`
+    // ** When creating service we are passing executorId and host via shell
 
-    constructor({name, bind, options = {}, id = `service::${shortid.generate()}`}={}) {
+    options = options || {}
+    options.serviceName = name
 
-        // ** When creating service we are passing executorId and host via shell
+    super({ id, bind, options })
 
-        options = Object.assign(options, {serviceName: name});
-        super({id, bind, options});
-
-        this.logger.info("Service constructor", {id});
-
-        let _scope = {
-            created: Date.now(),
-            started: null,
-            stoped : null,
-            status : 'constructor',
-        };
-
-        _private.set(this, _scope)
+    let _scope = {
+      name,
+      created: Date.now(),
+      started: null,
+      stoped: null,
+      status: ServiceStatus.INIT
     }
 
-    start() {
-        let _scope = _private.get(this);
+    _private.set(this, _scope)
+  }
 
-        _scope.started = Date.now();
-        _scope.status = 'online';
+  start () {
+    let _scope = _private.get(this)
 
-        this.logger.info(`Service ${_scope.id} initialized`)
+    _scope.started = Date.now()
+    _scope.status = ServiceStatus.ONLINE
+    this.logger.info(`Service ${_scope.id} started`)
+    return 1
+  }
+
+  async stop () {
+    await super.stop()
+    let _scope = _private.get(this)
+
+    _scope.status = ServiceStatus.OFFLINE
+    _scope.stoped = Date.now()
+    return 1
+  }
+
+  toJSON () {
+    let _scope = _private.get(this)
+    let options = this.getOptions()
+
+    return {
+      id: this.getId(),
+      name: _scope.name,
+      created: _scope.created,
+      started: _scope.started,
+      stoped: _scope.stoped,
+      status: _scope.status,
+      options
     }
+  }
 
-    async stop() {
-        await super.stop();
-        let _scope = _private.get(this);
+  getStatus () {
+    let _scope = _private.get(this)
+    return _scope.status
+  }
 
-        _scope.status = 'offline';
-        _scope.stoped = Date.now();
-    }
-
-    toJSON() {
-        let _scope = _private.get(this);
-        let options = this.getOptions();
-        return {
-            id: this.getId(),
-            options,
-            name: options.serviceName,
-            created: _scope.created,
-            started: _scope.started,
-            stoped: _scope.stoped,
-            status: _scope.status
-        };
-    }
-
-    getStatus() {
-        let _scope = _private.get(this);
-        return _scope.status
-    }
-
-    getName() {
-        let options = this.getOptions();
-        if (_.has(options, 'serviceName')) {
-            return options.serviceName
-        }
-    }
+  getName () {
+    let { name } = _private.get(this)
+    return name
+  }
 }
