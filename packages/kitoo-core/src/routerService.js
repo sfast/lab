@@ -20,6 +20,8 @@ export default class RouterService extends ServiceBase {
     super({ id, name, options })
     let node = new Node({ id, bind, options })
 
+    this.logger = node.logger
+
     let _scope = {
       node
     }
