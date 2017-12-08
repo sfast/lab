@@ -89,7 +89,7 @@ export default class RouterService extends ServiceBase {
     return node.tick({ to, event, data })
   }
 
-  tickAnyService ({ event, data, filter }) {
+  tickAnyService ({ event, data, filterfon }) {
     let { node } = _private.get(this)
     return node.tickAny({ event, data, filter })
   }
@@ -107,6 +107,30 @@ export default class RouterService extends ServiceBase {
   requestAnyService ({ event, data, timeout, filter }) {
     let { node } = _private.get(this)
     return node.requestAny({ event, data, timeout, filter })
+  }
+
+  onTick (event, handler) {
+    let { node } = _private.get(this)
+
+    node.onTick(event, handler)
+  }
+
+  offTick (event, handler) {
+    let { node } = _private.get(this)
+
+    node.offTick(event, handler)
+  }
+
+  onRequest (requestEvent, handler) {
+    let { node } = _private.get(this)
+
+    node.onRequest(requestEvent, handler)
+  }
+
+  offRequest (requestEvent, handler) {
+    let { node } = _private.get(this)
+
+    node.offRequest(requestEvent, handler)
   }
 
 }
