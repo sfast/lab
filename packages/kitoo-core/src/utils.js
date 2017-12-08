@@ -19,7 +19,7 @@ export function serializeObject (obj) {
 export function deserializeObject (obj) {
   obj = Object.assign({}, obj)
   _.each(obj, (value, key) => {
-    if (typeof value === 'object' && value.type == 'RegExp') {
+    if (typeof value === 'object' && value.type === 'RegExp') {
       obj[key] = new RegExp(value.value)
     }
   })

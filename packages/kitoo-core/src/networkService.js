@@ -3,7 +3,7 @@
  */
 
 import _ from 'underscore'
-import { NodeEvents, ErrorCodes, Node } from 'zeronode'
+import { NodeEvents, Node } from 'zeronode'
 import uuid from 'uuid/v4'
 import Promise from 'bluebird'
 
@@ -50,7 +50,7 @@ export default class NetworkService extends ServiceBase {
   }
 
   // ** TODO
-  async getRouters() {
+  async getRouters () {
     let _scope = _private.get(this)
     let routers = await storage.find(collections.ROUTERS, {networkId: this.getId()})
     return routers.length ? _.map(routers, (router) => router.address) : _scope.routers
@@ -59,14 +59,14 @@ export default class NetworkService extends ServiceBase {
   // ** start and then connect
   async connect (routerAddress, timeout) {
     if (this.getStatus() !== ServiceStatus.ONLINE) {
-      throw `NetworkServie ${this.getId()} connect error. You first need to start network service then start connect to routers`
+      throw new Error(`NetworkService ${this.getId()} connect error. You first need to start network service then start connect to routers`)
     }
     let { node } = _private.get(this)
 
     // ** awaiting the actor of router
     let { online, address } = await node.connect(routerAddress, timeout)
 
-    return online ? await this.addRouter(address) : null
+    return online ? this.addRouter(address) : null
   }
 
   async disconnect (routerAddress) {
@@ -129,7 +129,7 @@ export default class NetworkService extends ServiceBase {
     let self = this
 
     return {
-      proxyTick({ to, event, data } = {}) {
+      proxyTick ({ to, event, data } = {}) {
         return node::proxyUtils.proxyTick({
           id: to,
           event,
@@ -139,7 +139,7 @@ export default class NetworkService extends ServiceBase {
         })
       },
 
-      proxyTickAny({ event, data, filter = {} } = {}) {
+      proxyTickAny ({ event, data, filter = {} } = {}) {
         return node::proxyUtils.proxyTick({
           event,
           data,
@@ -149,7 +149,7 @@ export default class NetworkService extends ServiceBase {
         })
       },
 
-      proxyTickAll({ event, data, filter = {} }) {
+      proxyTickAll ({ event, data, filter = {} }) {
         return node::proxyUtils.proxyTick({
           event,
           data,
@@ -159,9 +159,9 @@ export default class NetworkService extends ServiceBase {
         })
       },
 
-      async proxyRequest({ to, event, data, timeout } = {}) {
+      async proxyRequest ({ to, event, data, timeout } = {}) {
         return node::proxyUtils.proxyRequest({
-          id : to,
+          id: to,
           event,
           data,
           timeout,
@@ -170,7 +170,7 @@ export default class NetworkService extends ServiceBase {
         })
       },
 
-      async proxyRequestAny({ event, data, timeout, filter = {} } = {}) {
+      async proxyRequestAny ({ event, data, timeout, filter = {} } = {}) {
         return node::proxyUtils.proxyRequest({
           event,
           data,
@@ -181,35 +181,35 @@ export default class NetworkService extends ServiceBase {
         })
       },
 
-      getService(serviceName) {
+      getService (serviceName) {
         this::self.getService(serviceName)
       }
     }
   }
 
   proxyTick ({ to, event, data } = {}) {
-    let { node } = _private.get(this);
-    return node::proxyUtils.proxyTick({ id: to, event, data,  type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO })
+    let { node } = _private.get(this)
+    return node::proxyUtils.proxyTick({ id: to, event, data, type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO })
   }
 
   proxyTickAny ({ event, data, filter = {} } = {}) {
-    let { node } = _private.get(this);
-    return node::proxyUtils.proxyTick({ event, data, filter,  type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY })
+    let { node } = _private.get(this)
+    return node::proxyUtils.proxyTick({ event, data, filter, type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY })
   }
 
   proxyTickAll ({ event, data, filter = {} }) {
-    let { node } = _private.get(this);
-    return node::proxyUtils.proxyTick({ event, data, filter,  type: Events.ROUTER.MESSAGE_TYPES.BROADCAST })
+    let { node } = _private.get(this)
+    return node::proxyUtils.proxyTick({ event, data, filter, type: Events.ROUTER.MESSAGE_TYPES.BROADCAST })
   }
 
   async proxyRequestAny ({ event, data, timeout, filter = {} } = {}) {
-    let { node } = _private.get(this);
-    return node::proxyUtils.proxyRequest({ event, data, timeout, filter,  type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY })
+    let { node } = _private.get(this)
+    return node::proxyUtils.proxyRequest({ event, data, timeout, filter, type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY })
   }
 
   async proxyRequest ({ to, event, data, timeout } = {}) {
-    let { node } = _private.get(this);
-    return node::proxyUtils.proxyRequest({ id : to, event, data, timeout, type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO })
+    let { node } = _private.get(this)
+    return node::proxyUtils.proxyRequest({ id: to, event, data, timeout, type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO })
   }
 
   getService (serviceName) {
@@ -222,32 +222,31 @@ export default class NetworkService extends ServiceBase {
       tickAll: ({ event, data }) => {
         self.proxyTickAll({ event, data, filter: {serviceName} })
       },
-      requestAny: async ({ event, data, timeout }) => {
-        return await self.proxyRequestAny({ event, data, timeout, filter: {serviceName} })
+      requestAny: ({ event, data, timeout }) => {
+        return self.proxyRequestAny({ event, data, timeout, filter: {serviceName} })
       }
     }
   }
 
-
-  onTick(event, handler) {
+  onTick (event, handler) {
     let { node } = _private.get(this)
 
     node.onTick(event, handler)
   }
 
-  offTick(event, handler) {
+  offTick (event, handler) {
     let { node } = _private.get(this)
 
     node.offTick(event, handler)
   }
 
-  onRequest(requestEvent, handler) {
+  onRequest (requestEvent, handler) {
     let { node } = _private.get(this)
 
     node.onRequest(requestEvent, handler)
   }
 
-  offRequest(requestEvent, handler) {
+  offRequest (requestEvent, handler) {
     let { node } = _private.get(this)
 
     node.offRequest(requestEvent, handler)

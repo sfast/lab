@@ -19,7 +19,7 @@ export default class Storage {
   async find (collectionName, query) {
     let collection = this.getCollection(collectionName)
     if (!collection) {
-      throw `there is no collection with that name ${collectionName}`
+      throw new Error(`there is no collection with that name ${collectionName}`)
     }
     return collection.find(query)
   }
@@ -27,7 +27,7 @@ export default class Storage {
   async findOne (collectionName, query) {
     let collection = this.getCollection(collectionName)
     if (!collection) {
-      throw `there is no collection with that name ${collectionName}`
+      throw new Error(`there is no collection with that name ${collectionName}`)
     }
     return collection.findOne(query)
   }
@@ -35,7 +35,7 @@ export default class Storage {
   async insert (collectionName, row) {
     let collection = this.getCollection(collectionName)
     if (!collection) {
-      throw `there is no collection with that name ${collectionName}`
+      throw new Error(`there is no collection with that name ${collectionName}`)
     }
     return collection.insert(row)
   }
@@ -43,7 +43,7 @@ export default class Storage {
   async update (collectionName, row) {
     let collection = this.getCollection(collectionName)
     if (!collection) {
-      throw `there is no collection with that name ${collectionName}`
+      throw new Error(`there is no collection with that name ${collectionName}`)
     }
     return collection.update(row)
   }
@@ -51,7 +51,7 @@ export default class Storage {
   async remove (collectionName, row) {
     let collection = this.getCollection(collectionName)
     if (!collection) {
-      throw `there is no collection with that name ${collectionName}`
+      throw new Error(`there is no collection with that name ${collectionName}`)
     }
     return collection.remove(row)
   }

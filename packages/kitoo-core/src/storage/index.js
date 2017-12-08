@@ -12,7 +12,7 @@ export let getStorageInstance = function () {
 
 export let setStorageInstance = function (_instance) {
   if (!(_instance instanceof Storage)) {
-    throw 'the instance of storageInstance must be Storage'
+    throw new Error('the instance of storageInstance must be Storage')
   }
   storageInstance = _instance
 }

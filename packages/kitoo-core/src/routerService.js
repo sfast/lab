@@ -11,7 +11,6 @@ import ServiceBase from './serviceBase'
 import { deserializeObject } from './utils'
 import { ServiceStatus, KitooCoreEvents, Events } from './enum'
 
-
 let _private = new WeakMap()
 
 export default class RouterService extends ServiceBase {
@@ -33,7 +32,7 @@ export default class RouterService extends ServiceBase {
   }
 
   async start (bind) {
-    if (this.getStatus() === ServiceStatus.ONLINE)  return
+    if (this.getStatus() === ServiceStatus.ONLINE) return
 
     let { node } = _private.get(this)
 
@@ -62,7 +61,7 @@ export default class RouterService extends ServiceBase {
 
   async connectToExistingNetwork (routerAddress) {
     if (this.getStatus() !== ServiceStatus.ONLINE) {
-      throw 'Need to start router before connecting to network'
+      throw new Error('Need to start router before connecting to network')
     }
 
     let { node } = _private.get(this)
@@ -79,7 +78,7 @@ export default class RouterService extends ServiceBase {
     await node.disconnect(address)
   }
 
-  getAddress() {
+  getAddress () {
     let { node } = _private.get(this)
     return node.getAddress()
   }
@@ -112,7 +111,6 @@ async function _serviceStopHandler (stopData) {
 
 function _routerTickMessageHandler ({type, id, event, data, filter} = {}) {
   try {
-
     // TODO :: some higher level checking if there is service with that filter
 
     switch (type) {
