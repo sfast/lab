@@ -8,7 +8,7 @@ import { NodeEvents, Node } from 'zeronode'
 import proxyUtils from './proxy'
 import ServiceBase from './serviceBase'
 
-import { deserializeObject } from './utils'
+import { deserializeObject, publishPredicateBuilder } from './utils'
 import { ServiceStatus, KitooCoreEvents, Events } from './enum'
 
 let _private = new WeakMap()
@@ -125,6 +125,8 @@ function _routerTickMessageHandler ({type, id, event, data, filter} = {}) {
       case Events.ROUTER.MESSAGE_TYPES.EMIT_TO:
         this.tick({ to: id, event, data })
         break
+      case Events.ROUTER.MESSAGE_TYPES.PUBLISH:
+        this.tickAll({ event, data, filter: publishPredicateBuilder(event) })
     }
   } catch (err) {
     this.logger.error(`error while handling service message:`, err)

@@ -4,7 +4,8 @@ const Events = {
     MESSAGE_TYPES: {
       BROADCAST: 'broadcast',
       EMIT_ANY: 'any',
-      EMIT_TO: 'to'
+      EMIT_TO: 'to',
+      PUBLISH: 'publish'
     }
   },
 

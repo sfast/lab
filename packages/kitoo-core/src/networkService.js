@@ -187,6 +187,7 @@ export default class NetworkService extends ServiceBase {
     }
   }
 
+  // ** Tick to services
   proxyTick ({ to, event, data } = {}) {
     let { node } = _private.get(this)
     return node::proxyUtils.proxyTick({ id: to, event, data, type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO })
@@ -202,6 +203,7 @@ export default class NetworkService extends ServiceBase {
     return node::proxyUtils.proxyTick({ event, data, filter, type: Events.ROUTER.MESSAGE_TYPES.BROADCAST })
   }
 
+  // ** request to Services
   async proxyRequestAny ({ event, data, timeout, filter = {} } = {}) {
     let { node } = _private.get(this)
     return node::proxyUtils.proxyRequest({ event, data, timeout, filter, type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY })
@@ -210,6 +212,31 @@ export default class NetworkService extends ServiceBase {
   async proxyRequest ({ to, event, data, timeout } = {}) {
     let { node } = _private.get(this)
     return node::proxyUtils.proxyRequest({ id: to, event, data, timeout, type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO })
+  }
+
+  tickToRouter ({ to, event, data }) {
+    let { node } = _private.get(this)
+    return node.tick({ to, event, data })
+  }
+
+  tickAnyRouter ({ event, data, filter }) {
+    let { node } = _private.get(this)
+    return node.tickAny({ event, data, filter })
+  }
+
+  tickAllRouters ({ event, data, filter }) {
+    let { node } = _private.get(this)
+    return node.tickAll({ event, data, filter })
+  }
+
+  requestToRouter ({ to, event, data, timeout }) {
+    let { node } = _private.get(this)
+    return node.request({ to, event, data, timeout })
+  }
+
+  requestAnyRouter ({ event, data, timeout, filter }) {
+    let { node } = _private.get(this)
+    return node.requestAny({ event, data, timeout, filter })
   }
 
   getService (serviceName) {
@@ -250,6 +277,23 @@ export default class NetworkService extends ServiceBase {
     let { node } = _private.get(this)
 
     node.offRequest(requestEvent, handler)
+  }
+
+  async subscribe (event, handler) {
+    let { node } = _private.get(this)
+    let options = node.getOptions()
+
+    if (!options.subscribed) options.subscribed = []
+    options.subscribed.push(event)
+
+    await node.setOptions(options)
+
+    node.onTick(event, handler)
+  }
+
+  publish ({ event, data }) {
+    let { node } = _private.get(this)
+    node::proxyUtils.proxyTick({ event, data, type: Events.ROUTER.MESSAGE_TYPES.PUBLISH })
   }
 }
 

@@ -3,7 +3,7 @@
  */
 import { assert } from 'chai'
 
-import { Router, Network, EVENTS, Errors} from '../src'
+import { Router, Network } from '../src'
 
 describe('manyRouters', () => {
   let router1, router2, service1, service2
