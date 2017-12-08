@@ -3,55 +3,57 @@
  */
 
 import _ from 'underscore'
-import {NodeEvents, ErrorCodes} from 'zeronode'
-import shortid from 'shortid'
+import { NodeEvents, ErrorCodes, Node } from 'zeronode'
+import uuid from 'uuid/v4'
 import Promise from 'bluebird'
 
-import globals from './globals'
 import proxyUtils from './proxy'
 import ServiceBase from './serviceBase'
 import {getStorageInstance, collections} from './storage'
-import { KitooCoreError, KitooCoreErrorCodes } from './errors'
-import {serializeObject} from './utils'
-import { ServiceStatus } from './enum'
+import { ServiceStatus, Events, KitooCoreEvents } from './enum'
 
-let {EVENTS} = globals
 let storage = getStorageInstance()
 
 let _private = new WeakMap()
 
 export default class NetworkService extends ServiceBase {
   constructor ({ id, name, routers, options } = {}) {
-    id = id || `network::${shortid.generate()}`
+    id = id || `network::${uuid()}`
     options = options || {}
     routers = routers || []
 
-    super({id, name, options})
+    super({ id, name, options })
+
+    let node = new Node({ id: this.getId(), options })
+
+    this.logger = node.logger
 
     // ** routers is just the addresses the network should connect to
     let _scope = {
-      routers: new Set(routers)
+      routers,
+      node
     }
 
     _private.set(this, _scope)
 
     // ** router failure listener
-    this.on(NodeEvents.SERVER_FAILURE, this::_routerFailureHandler)
+    node.on(NodeEvents.SERVER_FAILURE, this::_routerFailureHandler)
 
     // ** router stop listner
-    this.on(NodeEvents.SERVER_STOP, this::_routerStopHandler)
+    node.on(NodeEvents.SERVER_STOP, this::_routerStopHandler)
   }
 
   toJSON () {
     // add routersInfo
-    return super.toJSON()
+    let { node } = _private.get(this)
+    return Object.assign(super.toJSON(), { options: node.getOptions() })
   }
 
   // ** TODO
   async getRouters() {
     let _scope = _private.get(this)
     let routers = await storage.find(collections.ROUTERS, {networkId: this.getId()})
-    return routers.length ?  routers : _scope.routers
+    return routers.length ? _.map(routers, (router) => router.address) : _scope.routers
   }
 
   // ** start and then connect
@@ -59,9 +61,10 @@ export default class NetworkService extends ServiceBase {
     if (this.getStatus() !== ServiceStatus.ONLINE) {
       throw `NetworkServie ${this.getId()} connect error. You first need to start network service then start connect to routers`
     }
+    let { node } = _private.get(this)
 
     // ** awaiting the actor of router
-    let { online, address } = await super.connect(routerAddress, timeout)
+    let { online, address } = await node.connect(routerAddress, timeout)
 
     return online ? await this.addRouter(address) : null
   }
@@ -71,13 +74,14 @@ export default class NetworkService extends ServiceBase {
 
     if (!router) return null
 
-    await super.disconnect(router.address)
+    let { node } = _private.get(this)
+
+    await node.disconnect(router.address)
     await storage.remove(collections.ROUTERS, router)
     return true
   }
 
   async addRouter (routerAddress) {
-    let _scope = _private.get(this)
     let router = await storage.findOne(collections.ROUTERS, {address: routerAddress, networkId: this.getId()})
     if (!router) {
       router = await storage.insert(collections.ROUTERS, {address: routerAddress, networkId: this.getId()})
@@ -94,54 +98,123 @@ export default class NetworkService extends ServiceBase {
   async start () {
     if (this.getStatus() === ServiceStatus.ONLINE) return
 
+    let { node } = _private.get(this)
     super.start()
 
     let routersToConnect = await this.getRouters()
 
     let connectionPromises = _.map(routersToConnect, (router) => {
-      return this.connect(router.address)
+      return node.connect(router)
     })
 
     await Promise.all(connectionPromises)
 
     // ** attaching handlers
-    this.onTick(EVENTS.NETWORK.NEW_ROUTER, this::_newRouterHandler)
+    node.onTick(Events.NETWORK.NEW_ROUTER, this::_newRouterHandler)
   }
 
   // ** reviewed
   async stop () {
-    await super.stop()
+    let { node } = _private.get(this)
+
+    super.stop()
+    await node.stop()
 
     // ** detaching handlers
-    this.offTick(EVENTS.NETWORK.NEW_ROUTER)
+    node.offTick(Events.NETWORK.NEW_ROUTER)
   }
 
-  getRoutingInterface (filter) {
-      //TODO::DAVE
+  getRoutingInterface (routerFilter) {
+    let { node } = _private.get(this)
+    let self = this
+
+    return {
+      proxyTick({ to, event, data } = {}) {
+        return node::proxyUtils.proxyTick({
+          id: to,
+          event,
+          data,
+          type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO,
+          routerFilter
+        })
+      },
+
+      proxyTickAny({ event, data, filter = {} } = {}) {
+        return node::proxyUtils.proxyTick({
+          event,
+          data,
+          filter,
+          type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY,
+          routerFilter
+        })
+      },
+
+      proxyTickAll({ event, data, filter = {} }) {
+        return node::proxyUtils.proxyTick({
+          event,
+          data,
+          filter,
+          type: Events.ROUTER.MESSAGE_TYPES.BROADCAST,
+          routerFilter
+        })
+      },
+
+      async proxyRequest({ to, event, data, timeout } = {}) {
+        return node::proxyUtils.proxyRequest({
+          id : to,
+          event,
+          data,
+          timeout,
+          type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO,
+          routerFilter
+        })
+      },
+
+      async proxyRequestAny({ event, data, timeout, filter = {} } = {}) {
+        return node::proxyUtils.proxyRequest({
+          event,
+          data,
+          timeout,
+          filter,
+          type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY,
+          routerFilter
+        })
+      },
+
+      getService(serviceName) {
+        this::self.getService(serviceName)
+      }
+    }
   }
 
   proxyTick ({ to, event, data } = {}) {
-    return this::proxyUtils.proxyTick({ id: to, event, data,  type: EVENTS.ROUTER.MESSAGE_TYPES.EMIT_TO })
+    let { node } = _private.get(this);
+    return node::proxyUtils.proxyTick({ id: to, event, data,  type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO })
   }
 
   proxyTickAny ({ event, data, filter = {} } = {}) {
-    return this::proxyUtils.proxyTick({ event, data, filter,  type: EVENTS.ROUTER.MESSAGE_TYPES.EMIT_ANY })
+    let { node } = _private.get(this);
+    return node::proxyUtils.proxyTick({ event, data, filter,  type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY })
   }
 
   proxyTickAll ({ event, data, filter = {} }) {
-    return this::proxyUtils.proxyTick({ event, data, filter,  type: EVENTS.ROUTER.MESSAGE_TYPES.BROADCAST })
+    let { node } = _private.get(this);
+    return node::proxyUtils.proxyTick({ event, data, filter,  type: Events.ROUTER.MESSAGE_TYPES.BROADCAST })
   }
 
   async proxyRequestAny ({ event, data, timeout, filter = {} } = {}) {
-    return this::proxyUtils.proxyRequest({ event, data, timeout, filter,  type: EVENTS.ROUTER.MESSAGE_TYPES.EMIT_ANY })
+    let { node } = _private.get(this);
+    return node::proxyUtils.proxyRequest({ event, data, timeout, filter,  type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY })
   }
 
   async proxyRequest ({ to, event, data, timeout } = {}) {
-      return this::proxyUtils.proxyRequest({ id : to, event, data, timeout, type: EVENTS.ROUTER.MESSAGE_TYPES.EMIT_TO })
+    let { node } = _private.get(this);
+    return node::proxyUtils.proxyRequest({ id : to, event, data, timeout, type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO })
   }
 
   getService (serviceName) {
     let self = this
+
     return {
       tickAny: ({ event, data }) => {
         self.proxyTickAny({ event, data, filter: {serviceName} })
@@ -155,12 +228,37 @@ export default class NetworkService extends ServiceBase {
     }
   }
 
+
+  onTick(event, handler) {
+    let { node } = _private.get(this)
+
+    node.onTick(event, handler)
+  }
+
+  offTick(event, handler) {
+    let { node } = _private.get(this)
+
+    node.offTick(event, handler)
+  }
+
+  onRequest(requestEvent, handler) {
+    let { node } = _private.get(this)
+
+    node.onRequest(requestEvent, handler)
+  }
+
+  offRequest(requestEvent, handler) {
+    let { node } = _private.get(this)
+
+    node.offRequest(requestEvent, handler)
+  }
 }
 
 async function _newRouterHandler (routerAddress) {
   try {
     await this.connect(routerAddress)
     this.logger.info(`New router with address - ${routerAddress}`)
+    this.emit(KitooCoreEvents.NEW_ROUTER, { address: routerAddress })
   } catch (err) {
     this.emit('error', err)
   }
@@ -170,6 +268,7 @@ async function _routerStopHandler (routerInfo) {
   try {
     await this.disconnect(routerInfo.address)
     this.logger.info(`Router stop with address/id - ${routerInfo.address}/${routerInfo.id}`)
+    this.emit(KitooCoreEvents.ROUTER_STOP, routerInfo)
   } catch (err) {
     this.emit('error', err)
   }
@@ -179,6 +278,7 @@ async function _routerFailureHandler (routerInfo) {
   try {
     // TODO:: what id router failed and we'll need to wait for it for ages ?
     this.logger.info(`Eouter failed with address/id - ${routerInfo.address}/${routerInfo.id}`)
+    this.emit(KitooCoreEvents.ROUTER_FAIL, routerInfo)
   } catch (err) {
     this.emit('error', err)
   }

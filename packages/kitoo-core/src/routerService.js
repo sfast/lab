@@ -2,49 +2,62 @@
  * Created by artak on 2/22/17.
  */
 
-import shortid from 'shortid'
-import {NodeEvents} from 'zeronode'
+import uuid from 'uuid/v4'
+import { NodeEvents, Node } from 'zeronode'
 
-import Globals from './globals'
 import proxyUtils from './proxy'
 import ServiceBase from './serviceBase'
 
 import { deserializeObject } from './utils'
-import { ServiceStatus } from './enum'
+import { ServiceStatus, KitooCoreEvents, Events } from './enum'
 
-const { EVENTS } = Globals
+
+let _private = new WeakMap()
 
 export default class RouterService extends ServiceBase {
-  constructor ({id, bind, options = {} } = {}) {
-    id = id || `router::${shortid.generate()}`
+  constructor ({ id, name, bind, options = {} } = {}) {
+    id = id || `router::${uuid()}`
 
-    super({id, bind, options})
+    super({ id, name, options })
+    let node = new Node({ id, bind, options })
 
-    this.on(NodeEvents.CLIENT_CONNECTED, this::_serviceWelcomeHandler)
-    this.on(NodeEvents.CLIENT_FAILURE, this::_serviceFailOrStopHandler)
-    this.on(NodeEvents.CLIENT_STOP, this::_serviceFailOrStopHandler)
+    let _scope = {
+      node
+    }
+
+    node.on(NodeEvents.CLIENT_CONNECTED, this::_serviceWelcomeHandler)
+    node.on(NodeEvents.CLIENT_FAILURE, this::_serviceFailHandler)
+    node.on(NodeEvents.CLIENT_STOP, this::_serviceStopHandler)
+
+    _private.set(this, _scope)
   }
 
-  async start () {
+  async start (bind) {
     if (this.getStatus() === ServiceStatus.ONLINE)  return
 
+    let { node } = _private.get(this)
+
     super.start()
-    await this.bind(this.getAddress())
+    await node.bind(bind)
 
     // ** PROXIES EXPECTING FROM SERVICE LAYER
     // ** attaching event handlers
-    this.onTick(EVENTS.ROUTER.MESSAGE, this::_routerTickMessageHandler)
-    this.onRequest(EVENTS.ROUTER.MESSAGE, this::_routerRequestMessageHandler)
+    node.onTick(Events.ROUTER.MESSAGE, node::_routerTickMessageHandler)
+    node.onRequest(Events.ROUTER.MESSAGE, node::_routerRequestMessageHandler)
   }
 
   async stop () {
     if (this.getStatus() !== ServiceStatus.ONLINE) return
 
-    await super.stop()
+    let { node } = _private.get(this)
+
+    super.stop()
+
+    await node.stop()
 
     // ** detaching event handlers
-    this.offTick(EVENTS.ROUTER.MESSAGE)
-    this.offRequest(EVENTS.ROUTER.MESSAGE)
+    node.offTick(Events.ROUTER.MESSAGE)
+    node.offRequest(Events.ROUTER.MESSAGE)
   }
 
   async connectToExistingNetwork (routerAddress) {
@@ -52,39 +65,48 @@ export default class RouterService extends ServiceBase {
       throw 'Need to start router before connecting to network'
     }
 
-    let { actorId, address } = await this.connect(routerAddress)
+    let { node } = _private.get(this)
+    let { actorId, address } = await node.connect(routerAddress)
 
-    this::proxyUtils.proxyTick({
+    node::proxyUtils.proxyTick({
       id: actorId,
-      type: EVENTS.ROUTER.MESSAGE_TYPES.BROADCAST,
+      type: Events.ROUTER.MESSAGE_TYPES.BROADCAST,
       filter: {},
-      event: EVENTS.NETWORK.NEW_ROUTER,
-      data: this.getAddress()
+      event: Events.NETWORK.NEW_ROUTER,
+      data: node.getAddress()
     })
 
-    await this.disconnect(address)
+    await node.disconnect(address)
+  }
+
+  getAddress() {
+    let { node } = _private.get(this)
+    return node.getAddress()
   }
 }
 
-async function _serviceWelcomeHandler ({id, options} = {}) {
+async function _serviceWelcomeHandler (welcomeData) {
   try {
     // TODO::DAVE (you said its not a router)
-    this.emit(KitooCoreEvents.SERVICE_WELCOME)
+    this.emit(KitooCoreEvents.SERVICE_WELCOME, welcomeData)
   } catch (err) {
     this.emit('error', err)
   }
 }
 
-async function _serviceFailOrStopHandler ({id}) {
+async function _serviceFailHandler (failData) {
   try {
-    let service = await storage.findOne(collections.NETWORKS, {routerId: this.getId(), id})
-    if (!service) {
-      return
-    }
-    service.status = false
-    await storage.update(collections.NETWORKS, service)
+    this.emit(KitooCoreEvents.SERVICE_FAIL, failData)
   } catch (err) {
-    this.logger.error(`error while handling service Fail: ${err}`)
+    this.emit('error', err)
+  }
+}
+
+async function _serviceStopHandler (stopData) {
+  try {
+    this.emit(KitooCoreEvents.SERVICE_STOP, stopData)
+  } catch (err) {
+    this.emit('error', err)
   }
 }
 
@@ -94,15 +116,15 @@ function _routerTickMessageHandler ({type, id, event, data, filter} = {}) {
     // TODO :: some higher level checking if there is service with that filter
 
     switch (type) {
-      case EVENTS.ROUTER.MESSAGE_TYPES.BROADCAST:
+      case Events.ROUTER.MESSAGE_TYPES.BROADCAST:
         filter = deserializeObject(filter)
         this.tickAll({ event, data, filter })
         break
-      case EVENTS.ROUTER.MESSAGE_TYPES.EMIT_ANY:
+      case Events.ROUTER.MESSAGE_TYPES.EMIT_ANY:
         filter = deserializeObject(filter)
         this.tickAny({ event, data, filter })
         break
-      case EVENTS.ROUTER.MESSAGE_TYPES.EMIT_TO:
+      case Events.ROUTER.MESSAGE_TYPES.EMIT_TO:
         this.tick({ to: id, event, data })
         break
     }
@@ -118,16 +140,16 @@ async function _routerRequestMessageHandler (request) {
     let serviceResponse
         // TODO :: some higher level checking if there is service with that filter
     switch (type) {
-      case EVENTS.ROUTER.MESSAGE_TYPES.EMIT_ANY:
+      case Events.ROUTER.MESSAGE_TYPES.EMIT_ANY:
         filter = deserializeObject(filter)
         serviceResponse = await this.requestAny({ event, data, timeout, filter })
         break
-      case EVENTS.ROUTER.MESSAGE_TYPES.EMIT_TO:
+      case Events.ROUTER.MESSAGE_TYPES.EMIT_TO:
         serviceResponse = await this.request({ to: id, event, data, timeout })
         break
     }
     reply(serviceResponse)
   } catch (err) {
-    this.logger.error(`error while handling request message: ${err}`)
+    // this.logger.error(`error while handling request message: ${err}`)
   }
 }

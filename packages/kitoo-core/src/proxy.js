@@ -1,25 +1,25 @@
 import { ErrorCodes } from 'zeronode'
 
 import { serializeObject } from './utils'
-import { KitooCoreError, KitooCoreErrorCodes } from './errors'
-import Globals from './globals'
+import { Events } from './enum'
+import { KitooCoreError, KitooCoreErrorCodes} from './errors'
 
-const { EVENTS } = Globals
 
-const proxyTick = function ({ id, event, type, data, filter } = {}) {
+const proxyTick = function ({ id, event, type, data, filter, routerFilter } = {}) {
   try {
     let requestObject = {
-      event: EVENTS.ROUTER.MESSAGE,
+      event: Events.ROUTER.MESSAGE,
       data: {
         id,
         type,
         event,
         data,
         filter: filter ? serializeObject(filter) : undefined
-      }
+      },
+      filter: routerFilter
     }
 
-    return this.ticktAny(requestObject)
+    return this.tickAny(requestObject)
   } catch (err) {
     let kitooErr = new KitooCoreError()
 
@@ -35,10 +35,10 @@ const proxyTick = function ({ id, event, type, data, filter } = {}) {
   }
 }
 
-const proxyRequest = async function ({ id, event, type, data, timeout, filter } = {}) {
+const proxyRequest = async function ({ id, event, type, data, timeout, filter, routerFilter } = {}) {
   try {
     let requestObject = {
-      event: EVENTS.ROUTER.MESSAGE,
+      event: Events.ROUTER.MESSAGE,
       data: {
         id,
         type,
@@ -48,7 +48,7 @@ const proxyRequest = async function ({ id, event, type, data, timeout, filter } 
         filter: filter ? serializeObject(filter) : undefined
       },
       timeout,
-      filter: {serviceName: 'KitooCoreRouter'}
+      filter: routerFilter
     }
 
     return await this.requestAny(requestObject)

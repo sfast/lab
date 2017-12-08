@@ -2,27 +2,28 @@
  * Created by artak on 2/22/17.
  */
 
-import shortid from 'shortid'
-import Node from 'zeronode'
+import uuid from 'uuid/v4'
+import { EventEmitter } from 'events'
+
 import { ServiceStatus } from './enum'
 
 let _private = new WeakMap()
 
-export default class ServiceBase extends Node {
-  constructor ({ id, name, bind, options } = {}) {
-    id = id || `service::${shortid.generate()}`
+export default class ServiceBase extends EventEmitter{
+  constructor ({ id, name, options} = {}) {
+    id = id || `service::${uuid()}`
     // ** When creating service we are passing executorId and host via shell
 
-    options = options || {}
-    options.serviceName = name
+    super()
 
-    super({ id, bind, options })
+    options.serviceName = name || 'default'
 
     let _scope = {
       name,
+      id,
       created: Date.now(),
       started: null,
-      stoped: null,
+      stopped: null,
       status: ServiceStatus.INIT
     }
 
@@ -34,31 +35,25 @@ export default class ServiceBase extends Node {
 
     _scope.started = Date.now()
     _scope.status = ServiceStatus.ONLINE
-    this.logger.info(`Service ${_scope.id} started`)
-    return 1
   }
 
-  async stop () {
-    await super.stop()
+  stop () {
     let _scope = _private.get(this)
 
     _scope.status = ServiceStatus.OFFLINE
-    _scope.stoped = Date.now()
-    return 1
+    _scope.stopped = Date.now()
   }
 
   toJSON () {
     let _scope = _private.get(this)
-    let options = this.getOptions()
 
     return {
       id: this.getId(),
       name: _scope.name,
       created: _scope.created,
       started: _scope.started,
-      stoped: _scope.stoped,
-      status: _scope.status,
-      options
+      stopped: _scope.stopped,
+      status: _scope.status
     }
   }
 
@@ -70,5 +65,10 @@ export default class ServiceBase extends Node {
   getName () {
     let { name } = _private.get(this)
     return name
+  }
+
+  getId () {
+    let { id } = _private.get(this)
+    return id
   }
 }

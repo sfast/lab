@@ -50,7 +50,7 @@ describe('manyRouters', () => {
     })
     service2.proxyRequest({ to: service1.getId(), event: 'foobar', data, timeout: 500 })
             .catch(err => {
-              assert.include(err.message, 'timeout')
+              assert.include(err.error.message, 'timeout')
               done()
             })
   })
@@ -84,7 +84,7 @@ describe('manyRouters', () => {
     })
     service2.getService(service1.getName()).requestAny({ event: 'foobar', data, timeout: 500 })
             .catch(err => {
-              assert.include(err.message, 'timeout')
+              assert.include(err.error.message, 'timeout')
               done()
             })
   })
