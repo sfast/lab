@@ -82,6 +82,33 @@ export default class RouterService extends ServiceBase {
     let { node } = _private.get(this)
     return node.getAddress()
   }
+
+  // ** tick to services
+  tickToService ({ to, event, data }) {
+    let { node } = _private.get(this)
+    return node.tick({ to, event, data })
+  }
+
+  tickAnyService ({ event, data, filter }) {
+    let { node } = _private.get(this)
+    return node.tickAny({ event, data, filter })
+  }
+
+  tickAllServices ({ event, data, filter }) {
+    let { node } = _private.get(this)
+    return node.tickAll({ event, data, filter })
+  }
+
+  requestToService ({ to, event, data, timeout }) {
+    let { node } = _private.get(this)
+    return node.request({ to, event, data, timeout })
+  }
+
+  requestAnyService ({ event, data, timeout, filter }) {
+    let { node } = _private.get(this)
+    return node.requestAny({ event, data, timeout, filter })
+  }
+
 }
 
 async function _serviceWelcomeHandler (welcomeData) {
