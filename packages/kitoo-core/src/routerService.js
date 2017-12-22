@@ -9,7 +9,7 @@ import proxyUtils from './proxy'
 import ServiceBase from './serviceBase'
 
 import { deserializeObject, publishPredicateBuilder } from './utils'
-import { ServiceStatus, KitooCoreEvents, Events } from './enum'
+import { ServiceStatus, KitooCoreEvents, Events, MessageTypes } from './enum'
 
 let _private = new WeakMap()
 
@@ -71,7 +71,7 @@ export default class RouterService extends ServiceBase {
 
     node::proxyUtils.proxyTick({
       id: actorId,
-      type: Events.ROUTER.MESSAGE_TYPES.BROADCAST,
+      type: MessageTypes.BROADCAST,
       filter: {},
       event: Events.NETWORK.NEW_ROUTER,
       data: node.getAddress()
@@ -167,18 +167,18 @@ function _routerTickMessageHandler ({type, id, event, data, filter} = {}, head) 
     // TODO :: some higher level checking if there is service with that filter
 
     switch (type) {
-      case Events.ROUTER.MESSAGE_TYPES.BROADCAST:
+      case MessageTypes.BROADCAST:
         filter = deserializeObject(filter)
         this.tickAll({ event, data, filter })
         break
-      case Events.ROUTER.MESSAGE_TYPES.EMIT_ANY:
+      case MessageTypes.EMIT_ANY:
         filter = deserializeObject(filter)
         this.tickAny({ event, data, filter })
         break
-      case Events.ROUTER.MESSAGE_TYPES.EMIT_TO:
+      case MessageTypes.EMIT_TO:
         this.tick({ to: id, event, data })
         break
-      case Events.ROUTER.MESSAGE_TYPES.PUBLISH:
+      case MessageTypes.PUBLISH:
         let serviceNode = this.getClientInfo({ id: head.id })
         this.tickAll({ event, data, filter: publishPredicateBuilder(event, serviceNode.getOptions().serviceName) })
     }
@@ -194,11 +194,11 @@ async function _routerRequestMessageHandler (request) {
     let serviceResponse
         // TODO :: some higher level checking if there is service with that filter
     switch (type) {
-      case Events.ROUTER.MESSAGE_TYPES.EMIT_ANY:
+      case MessageTypes.EMIT_ANY:
         filter = deserializeObject(filter)
         serviceResponse = await this.requestAny({ event, data, timeout, filter })
         break
-      case Events.ROUTER.MESSAGE_TYPES.EMIT_TO:
+      case MessageTypes.EMIT_TO:
         serviceResponse = await this.request({ to: id, event, data, timeout })
         break
     }

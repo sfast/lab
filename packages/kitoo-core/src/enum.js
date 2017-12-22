@@ -1,17 +1,18 @@
 const Events = {
   ROUTER: {
-    MESSAGE: 'kitoo.core.router.message',
-    MESSAGE_TYPES: {
-      BROADCAST: 'broadcast',
-      EMIT_ANY: 'any',
-      EMIT_TO: 'to',
-      PUBLISH: 'publish'
-    }
+    MESSAGE: 'kitoo.core.router.message'
   },
 
   NETWORK: {
     NEW_ROUTER: 'kitoo.core.network.new.router'
   }
+}
+
+const MessageTypes = {
+  BROADCAST: 'broadcast',
+  EMIT_ANY: 'any',
+  EMIT_TO: 'to',
+  PUBLISH: 'publish'
 }
 
 const KitooCoreEvents = {
@@ -29,10 +30,11 @@ const ServiceStatus = {
   OFFLINE: 'offline'
 }
 
-export { ServiceStatus, KitooCoreEvents, Events }
+export { ServiceStatus, KitooCoreEvents, Events, MessageTypes }
 
 export default {
   ServiceStatus,
   KitooCoreEvents,
-  Events
+  Events,
+  MessageTypes
 }

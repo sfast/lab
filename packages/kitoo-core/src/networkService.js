@@ -10,7 +10,7 @@ import Promise from 'bluebird'
 import proxyUtils from './proxy'
 import ServiceBase from './serviceBase'
 import {getStorageInstance, collections} from './storage'
-import { ServiceStatus, Events, KitooCoreEvents } from './enum'
+import { ServiceStatus, Events, KitooCoreEvents, MessageTypes } from './enum'
 
 let storage = getStorageInstance()
 
@@ -134,7 +134,7 @@ export default class NetworkService extends ServiceBase {
           id: to,
           event,
           data,
-          type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO,
+          type: MessageTypes.EMIT_TO,
           routerFilter
         })
       },
@@ -144,7 +144,7 @@ export default class NetworkService extends ServiceBase {
           event,
           data,
           filter,
-          type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY,
+          type: MessageTypes.EMIT_ANY,
           routerFilter
         })
       },
@@ -154,7 +154,7 @@ export default class NetworkService extends ServiceBase {
           event,
           data,
           filter,
-          type: Events.ROUTER.MESSAGE_TYPES.BROADCAST,
+          type: MessageTypes.BROADCAST,
           routerFilter
         })
       },
@@ -165,7 +165,7 @@ export default class NetworkService extends ServiceBase {
           event,
           data,
           timeout,
-          type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO,
+          type: MessageTypes.EMIT_TO,
           routerFilter
         })
       },
@@ -176,7 +176,7 @@ export default class NetworkService extends ServiceBase {
           data,
           timeout,
           filter,
-          type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY,
+          type: MessageTypes.EMIT_ANY,
           routerFilter
         })
       },
@@ -192,28 +192,28 @@ export default class NetworkService extends ServiceBase {
   // ** Tick to services
   proxyTick ({ to, event, data } = {}) {
     let { node } = _private.get(this)
-    return node::proxyUtils.proxyTick({ id: to, event, data, type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO })
+    return node::proxyUtils.proxyTick({ id: to, event, data, type: MessageTypes.EMIT_TO })
   }
 
   proxyTickAny ({ event, data, filter = {} } = {}) {
     let { node } = _private.get(this)
-    return node::proxyUtils.proxyTick({ event, data, filter, type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY })
+    return node::proxyUtils.proxyTick({ event, data, filter, type: MessageTypes.EMIT_ANY })
   }
 
   proxyTickAll ({ event, data, filter = {} }) {
     let { node } = _private.get(this)
-    return node::proxyUtils.proxyTick({ event, data, filter, type: Events.ROUTER.MESSAGE_TYPES.BROADCAST })
+    return node::proxyUtils.proxyTick({ event, data, filter, type: MessageTypes.BROADCAST })
   }
 
   // ** request to Services
   async proxyRequestAny ({ event, data, timeout, filter = {} } = {}) {
     let { node } = _private.get(this)
-    return node::proxyUtils.proxyRequest({ event, data, timeout, filter, type: Events.ROUTER.MESSAGE_TYPES.EMIT_ANY })
+    return node::proxyUtils.proxyRequest({ event, data, timeout, filter, type: MessageTypes.EMIT_ANY })
   }
 
   async proxyRequest ({ to, event, data, timeout } = {}) {
     let { node } = _private.get(this)
-    return node::proxyUtils.proxyRequest({ id: to, event, data, timeout, type: Events.ROUTER.MESSAGE_TYPES.EMIT_TO })
+    return node::proxyUtils.proxyRequest({ id: to, event, data, timeout, type: MessageTypes.EMIT_TO })
   }
 
   tickToRouter ({ to, event, data }) {
@@ -301,7 +301,7 @@ export default class NetworkService extends ServiceBase {
 
   publish ({ event, data }) {
     let { node } = _private.get(this)
-    node::proxyUtils.proxyTick({ event, data, type: Events.ROUTER.MESSAGE_TYPES.PUBLISH })
+    node::proxyUtils.proxyTick({ event, data, type: MessageTypes.PUBLISH })
   }
 }
 
