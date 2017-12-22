@@ -91,7 +91,7 @@ export default class RouterService extends ServiceBase {
     return node.tick({ to, event, data })
   }
 
-  tickAnyService ({ event, data, filterfon }) {
+  tickAnyService ({ event, data, filter }) {
     let { node } = _private.get(this)
     return node.tickAny({ event, data, filter })
   }
@@ -134,7 +134,6 @@ export default class RouterService extends ServiceBase {
 
     node.offRequest(requestEvent, handler)
   }
-
 }
 
 async function _serviceWelcomeHandler (welcomeData) {
@@ -162,7 +161,8 @@ async function _serviceStopHandler (stopData) {
   }
 }
 
-function _routerTickMessageHandler ({type, id, event, data, filter} = {}) {
+function _routerTickMessageHandler ({type, id, event, data, filter} = {}, head) {
+  // here this is zeronode instance
   try {
     // TODO :: some higher level checking if there is service with that filter
 
@@ -179,7 +179,8 @@ function _routerTickMessageHandler ({type, id, event, data, filter} = {}) {
         this.tick({ to: id, event, data })
         break
       case Events.ROUTER.MESSAGE_TYPES.PUBLISH:
-        this.tickAll({ event, data, filter: publishPredicateBuilder(event) })
+        let serviceNode = this.getClientInfo({ id: head.id })
+        this.tickAll({ event, data, filter: publishPredicateBuilder(event, serviceNode.getOptions().serviceName) })
     }
   } catch (err) {
     this.logger.error(`error while handling service message:`, err)

@@ -34,6 +34,12 @@ export function deserializeObject (obj) {
   return obj
 }
 
-export function publishPredicateBuilder (event) {
-  return (options) => options.subscribed && options.subscribed.indexOf(event) !== -1
+export function publishPredicateBuilder (publishEvent, publishService) {
+  return (options) => {
+    if (!options.subscribed || !options.subscribed[publishEvent]) return false
+
+    let subscribedEventServices = options.subscribed[publishEvent]
+
+    return subscribedEventServices === '*' || subscribedEventServices.indexOf(publishService) !== -1
+  }
 }

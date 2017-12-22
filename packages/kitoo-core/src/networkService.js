@@ -128,7 +128,7 @@ export default class NetworkService extends ServiceBase {
     let { node } = _private.get(this)
     let self = this
 
-    return {
+    let interfaceObject = {
       proxyTick ({ to, event, data } = {}) {
         return node::proxyUtils.proxyTick({
           id: to,
@@ -182,9 +182,11 @@ export default class NetworkService extends ServiceBase {
       },
 
       getService (serviceName) {
-        this::self.getService(serviceName)
+        interfaceObject::self.getService(serviceName)
       }
     }
+
+    return interfaceObject
   }
 
   // ** Tick to services
@@ -279,12 +281,18 @@ export default class NetworkService extends ServiceBase {
     node.offRequest(requestEvent, handler)
   }
 
-  async subscribe (event, handler) {
+  async subscribe ({ event, handler, service = '*' }) {
     let { node } = _private.get(this)
     let options = node.getOptions()
 
-    if (!options.subscribed) options.subscribed = []
-    options.subscribed.push(event)
+    if (!options.subscribed) options.subscribed = {}
+    if (!options.subscribed[event]) options.subscribed[event] = []
+
+    let subscribedEventServices = options.subscribed[event]
+
+    if (subscribedEventServices === '*' || service === '*') options.subscribed[event] = '*'
+    else if (Array.isArray(service)) options.subscribed[event] = [...(new Set([...subscribedEventServices, ...service]))]
+    else subscribedEventServices.push(service)
 
     await node.setOptions(options)
 
