@@ -17,14 +17,15 @@ let storage = getStorageInstance()
 let _private = new WeakMap()
 
 export default class NetworkService extends ServiceBase {
-  constructor ({ id, name, routers, options } = {}) {
+  constructor ({ id, name, routers, options, config } = {}) {
     id = id || `network::${uuid()}`
     options = options || {}
+    config = config || {}
     routers = routers || []
 
     super({ id, name, options })
 
-    let node = new Node({ id: this.getId(), options })
+    let node = new Node({ id: this.getId(), options, config })
 
     this.logger = node.logger
 
@@ -57,19 +58,19 @@ export default class NetworkService extends ServiceBase {
   }
 
   // ** start and then connect
-  async connect (routerAddress, timeout) {
+  async connectRouter ({routerAddress, timeout, reconnectionTimeout} = {}) {
     if (this.getStatus() !== ServiceStatus.ONLINE) {
       throw new Error(`NetworkService ${this.getId()} connect error. You first need to start network service then start connect to routers`)
     }
     let { node } = _private.get(this)
 
     // ** awaiting the actor of router
-    let { online, address } = await node.connect(routerAddress, timeout)
+    let { online, address } = await node.connect({address: routerAddress, timeout,reconnectionTimeout })
 
     return online ? this.addRouter(address) : null
   }
 
-  async disconnect (routerAddress) {
+  async disconnectRouter (routerAddress) {
     let router = await storage.findOne(collections.ROUTERS, {address: routerAddress, networkId: this.getId()})
 
     if (!router) return null
@@ -91,11 +92,14 @@ export default class NetworkService extends ServiceBase {
   }
 
   removeRouter (routerAddress) {
-    return this.disconnect(routerAddress)
+    return this.disconnectRouter(routerAddress)
   }
 
   // ** reviewed
   async start () {
+    // TODO::if at least one router is connected then resolve network start
+    // all other routers connection info should be propogated as events
+
     if (this.getStatus() === ServiceStatus.ONLINE) return
 
     let { node } = _private.get(this)
@@ -104,13 +108,14 @@ export default class NetworkService extends ServiceBase {
     let routersToConnect = await this.getRouters()
 
     let connectionPromises = _.map(routersToConnect, (router) => {
-      return node.connect(router)
+      // TODO:: add timeout and reconnectimeout from config
+      return node.connect({address: router})
     })
-
-    await Promise.all(connectionPromises)
 
     // ** attaching handlers
     node.onTick(Events.NETWORK.NEW_ROUTER, this::_newRouterHandler)
+
+    await Promise.all(connectionPromises)
   }
 
   // ** reviewed
@@ -124,6 +129,7 @@ export default class NetworkService extends ServiceBase {
     node.offTick(Events.NETWORK.NEW_ROUTER)
   }
 
+  // TODO add example
   getRoutingInterface (routerFilter) {
     let { node } = _private.get(this)
     let self = this
@@ -182,7 +188,7 @@ export default class NetworkService extends ServiceBase {
       },
 
       getService (serviceName) {
-        interfaceObject::self.getService(serviceName)
+        return interfaceObject::self.getService(serviceName)
       }
     }
 
@@ -242,17 +248,15 @@ export default class NetworkService extends ServiceBase {
   }
 
   getService (serviceName) {
-    let self = this
-
     return {
       tickAny: ({ event, data }) => {
-        self.proxyTickAny({ event, data, filter: {serviceName} })
+        this.proxyTickAny({ event, data, filter: {serviceName} })
       },
       tickAll: ({ event, data }) => {
-        self.proxyTickAll({ event, data, filter: {serviceName} })
+        this.proxyTickAll({ event, data, filter: {serviceName} })
       },
       requestAny: ({ event, data, timeout }) => {
-        return self.proxyRequestAny({ event, data, timeout, filter: {serviceName} })
+        return this.proxyRequestAny({ event, data, timeout, filter: {serviceName} })
       }
     }
   }
@@ -281,6 +285,7 @@ export default class NetworkService extends ServiceBase {
     node.offRequest(requestEvent, handler)
   }
 
+  // ** You can subscribe at first and then connect to router
   async subscribe ({ event, handler, service = '*' }) {
     let { node } = _private.get(this)
     let options = node.getOptions()
@@ -290,6 +295,7 @@ export default class NetworkService extends ServiceBase {
 
     let subscribedEventServices = options.subscribed[event]
 
+    // TODO ::review subscribedEventServices.push(service)
     if (subscribedEventServices === '*' || service === '*') options.subscribed[event] = '*'
     else if (Array.isArray(service)) options.subscribed[event] = [...(new Set([...subscribedEventServices, ...service]))]
     else subscribedEventServices.push(service)
@@ -307,7 +313,7 @@ export default class NetworkService extends ServiceBase {
 
 async function _newRouterHandler (routerAddress) {
   try {
-    await this.connect(routerAddress)
+    await this.connectRouter(routerAddress)
     this.logger.info(`New router with address - ${routerAddress}`)
     this.emit(KitooCoreEvents.NEW_ROUTER, { address: routerAddress })
   } catch (err) {

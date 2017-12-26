@@ -1,2 +1,7 @@
-- shortid change to uuid
 - what id router failed and we'll need to wait for it for ages ?
+- KitooCoreEvents move to events.js as this is our public API
+- RECONNECT RECONNECT_FAILURE on network 
+- serviceName under options as 'service'
+- add node CONNECT event under node, same here for new connected routers
+- cleanup storage
+- think how we can modularize proxy
