@@ -123,6 +123,6 @@ describe('singleRouter', () => {
       assert.deepEqual(msg, data)
       done()
     })
-    service2.proxyTickAny({ event: 'foobar', data, filter: {serviceName: /^foo/} })
+    service2.proxyTickAny({ event: 'foobar', data, filter: {service: /^foo/} })
   })
 })

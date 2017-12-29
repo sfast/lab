@@ -181,7 +181,7 @@ function _routerTickMessageHandler ({type, id, event, data, filter} = {}, head) 
         break
       case MessageTypes.PUBLISH:
         let serviceNode = this.getClientInfo({ id: head.id })
-        this.tickAll({ event, data, filter: publishPredicateBuilder(event, serviceNode.getOptions().serviceName) })
+        this.tickAll({ event, data, filter: publishPredicateBuilder(event, serviceNode.getOptions().service) })
     }
   } catch (err) {
     this.logger.error(`error while handling service message:`, err)

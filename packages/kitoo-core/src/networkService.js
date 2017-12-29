@@ -116,7 +116,7 @@ export default class NetworkService extends ServiceBase {
     // ** attaching handlers
     node.onTick(Events.NETWORK.NEW_ROUTER, this::_newRouterHandler)
 
-    await Promise.all(connectionPromises)
+    await Promise.any(connectionPromises)
   }
 
   // ** reviewed
@@ -251,13 +251,13 @@ export default class NetworkService extends ServiceBase {
   getService (serviceName) {
     return {
       tickAny: ({ event, data }) => {
-        this.proxyTickAny({ event, data, filter: {serviceName} })
+        this.proxyTickAny({ event, data, filter: {service: serviceName} })
       },
       tickAll: ({ event, data }) => {
-        this.proxyTickAll({ event, data, filter: {serviceName} })
+        this.proxyTickAll({ event, data, filter: {service: serviceName} })
       },
       requestAny: ({ event, data, timeout }) => {
-        return this.proxyRequestAny({ event, data, timeout, filter: {serviceName} })
+        return this.proxyRequestAny({ event, data, timeout, filter: {service: serviceName} })
       }
     }
   }

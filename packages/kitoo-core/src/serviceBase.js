@@ -16,7 +16,7 @@ export default class ServiceBase extends EventEmitter {
 
     super()
 
-    options.serviceName = name || 'default'
+    options.service = name || 'default'
 
     let _scope = {
       name,
