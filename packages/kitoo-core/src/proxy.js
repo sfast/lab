@@ -1,7 +1,7 @@
 import { ErrorCodes } from 'zeronode'
 
 import { serializeObject } from './utils'
-import { Events } from './enum'
+import { Events } from './events'
 import { KitooCoreError, KitooCoreErrorCodes } from './errors'
 
 const proxyTick = function ({ id, event, type, data, filter, routerFilter } = {}) {

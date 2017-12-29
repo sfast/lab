@@ -10,7 +10,8 @@ import Promise from 'bluebird'
 import proxyUtils from './proxy'
 import ServiceBase from './serviceBase'
 import {getStorageInstance, collections} from './storage'
-import { ServiceStatus, Events, KitooCoreEvents, MessageTypes } from './enum'
+import { ServiceStatus, MessageTypes } from './enum'
+import { Events, KitooCoreEvents } from './events'
 
 let storage = getStorageInstance()
 

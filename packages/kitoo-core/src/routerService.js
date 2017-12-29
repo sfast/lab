@@ -9,7 +9,8 @@ import proxyUtils from './proxy'
 import ServiceBase from './serviceBase'
 
 import { deserializeObject, publishPredicateBuilder } from './utils'
-import { ServiceStatus, KitooCoreEvents, Events, MessageTypes } from './enum'
+import { ServiceStatus, MessageTypes } from './enum'
+import {  KitooCoreEvents, Events } from './events'
 
 let _private = new WeakMap()
 
