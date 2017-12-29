@@ -36,6 +36,8 @@ export default class NetworkService extends ServiceBase {
 
     _private.set(this, _scope)
 
+    node.on(NodeEvents.CONNECT_TO_SERVER, this::_connectToRouter)
+
     // ** router failure listener
     node.on(NodeEvents.SERVER_FAILURE, this::_routerFailureHandler)
 
@@ -335,6 +337,15 @@ async function _routerFailureHandler (routerInfo) {
     // TODO:: what id router failed and we'll need to wait for it for ages ?
     this.logger.info(`Eouter failed with address/id - ${routerInfo.address}/${routerInfo.id}`)
     this.emit(KitooCoreEvents.ROUTER_FAIL, routerInfo)
+  } catch (err) {
+    this.emit('error', err)
+  }
+}
+
+async function _connectToRouter (routerInfo) {
+  try {
+    this.logger.info(`Connected to router with address/id - ${routerInfo.address}/${routerInfo.id}`)
+    this.emit(KitooCoreEvents.CONNECT_TO_ROUTER, routerInfo)
   } catch (err) {
     this.emit('error', err)
   }
