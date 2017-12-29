@@ -4,17 +4,14 @@
 import Storage from './storage'
 import * as collections from './collections'
 
-let storageInstance = new Storage()
+let storage = new Storage()
 
-export let getStorageInstance = function () {
-  return storageInstance
+export {
+  storage,
+  collections
 }
 
-export let setStorageInstance = function (_instance) {
-  if (!(_instance instanceof Storage)) {
-    throw new Error('the instance of storageInstance must be Storage')
-  }
-  storageInstance = _instance
+export default {
+  storage,
+  collections
 }
-
-export {Storage, collections}

@@ -9,11 +9,9 @@ import Promise from 'bluebird'
 
 import proxyUtils from './proxy'
 import ServiceBase from './serviceBase'
-import {getStorageInstance, collections} from './storage'
+import {storage, collections} from './storage'
 import { ServiceStatus, MessageTypes } from './enum'
 import { Events, KitooCoreEvents } from './events'
-
-let storage = getStorageInstance()
 
 let _private = new WeakMap()
 
