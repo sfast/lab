@@ -43,6 +43,12 @@ export default class NetworkService extends ServiceBase {
 
     // ** router stop listner
     node.on(NodeEvents.SERVER_STOP, this::_routerStopHandler)
+
+    // ** router reconnect listener
+    node.on(NodeEvents.SERVER_RECONNECT, this::_routerReconnectHandler)
+
+    // ** router reconnect failure listener
+    node.on(NodeEvents.SERVER_RECONNECT_FAILURE, this::_routerReconnectFailureHandler)
   }
 
   toJSON () {
@@ -59,14 +65,14 @@ export default class NetworkService extends ServiceBase {
   }
 
   // ** start and then connect
-  async connectRouter ({routerAddress, timeout, reconnectionTimeout} = {}) {
+  async connectRouter ({ routerAddress, timeout, reconnectionTimeout } = {}) {
     if (this.getStatus() !== ServiceStatus.ONLINE) {
       throw new Error(`NetworkService ${this.getId()} connect error. You first need to start network service then start connect to routers`)
     }
     let { node } = _private.get(this)
 
     // ** awaiting the actor of router
-    let { online, address } = await node.connect({address: routerAddress, timeout,reconnectionTimeout })
+    let { online, address } = await node.connect({ address: routerAddress, timeout, reconnectionTimeout })
 
     return online ? this.addRouter(address) : null
   }
@@ -314,7 +320,7 @@ export default class NetworkService extends ServiceBase {
 
 async function _newRouterHandler (routerAddress) {
   try {
-    await this.connectRouter(routerAddress)
+    await this.connectRouter({ routerAddress })
     this.logger.info(`New router with address - ${routerAddress}`)
     this.emit(KitooCoreEvents.NEW_ROUTER, { address: routerAddress })
   } catch (err) {
@@ -334,9 +340,27 @@ async function _routerStopHandler (routerInfo) {
 
 async function _routerFailureHandler (routerInfo) {
   try {
-    // TODO:: what id router failed and we'll need to wait for it for ages ?
-    this.logger.info(`Eouter failed with address/id - ${routerInfo.address}/${routerInfo.id}`)
-    this.emit(KitooCoreEvents.ROUTER_FAIL, routerInfo)
+    this.logger.info(`Router failed with address/id - ${routerInfo.address}/${routerInfo.id}`)
+    this.emit(KitooCoreEvents.ROUTER_FAILURE, routerInfo)
+  } catch (err) {
+    this.emit('error', err)
+  }
+}
+
+async function _routerReconnectHandler (routerInfo) {
+  try {
+    this.logger.info(`Router reconnected with address/id - ${routerInfo.address}/${routerInfo.id}`)
+    this.emit(KitooCoreEvents.ROUTER_RECONNECT, routerInfo)
+  } catch (err) {
+    this.emit('error', err)
+  }
+}
+
+async function _routerReconnectFailureHandler (routerInfo) {
+  try {
+    await this.disconnect(routerInfo.address)
+    this.logger.info(`Eouter reconnected with address/id - ${routerInfo.address}/${routerInfo.id}`)
+    this.emit(KitooCoreEvents.ROUTER_RECONNECT_FAILURE, routerInfo)
   } catch (err) {
     this.emit('error', err)
   }
