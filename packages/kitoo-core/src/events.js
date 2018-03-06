@@ -1,6 +1,7 @@
 const KitooCoreEvents = {
   ROUTER_FAIL: 'router.fail',
   ROUTER_STOP: 'router.stop',
+  CONNECT_TO_ROUTER: 'router.connect',
   ROUTER_RECONNECT: 'router.reconnect',
   ROUTER_RECONNECT_FAILURE: 'router.reconnect.failure',
   NEW_ROUTER: 'new.router',

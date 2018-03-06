@@ -60,8 +60,9 @@ export default class NetworkService extends ServiceBase {
   // ** TODO
   async getRouters () {
     let _scope = _private.get(this)
+    await Promise.all(_.map(_scope.routers, this::this.addRouter))
     let routers = await storage.find(collections.ROUTERS, {networkId: this.getId()})
-    return routers.length ? _.map(routers, (router) => router.address) : _scope.routers
+    return _.map(routers, (router) => router.address)
   }
 
   // ** start and then connect
@@ -330,7 +331,7 @@ async function _newRouterHandler (routerAddress) {
 
 async function _routerStopHandler (routerInfo) {
   try {
-    await this.disconnect(routerInfo.address)
+    await this.disconnectRouter(routerInfo.address)
     this.logger.info(`Router stop with address/id - ${routerInfo.address}/${routerInfo.id}`)
     this.emit(KitooCoreEvents.ROUTER_STOP, routerInfo)
   } catch (err) {
@@ -341,7 +342,7 @@ async function _routerStopHandler (routerInfo) {
 async function _routerFailureHandler (routerInfo) {
   try {
     this.logger.info(`Router failed with address/id - ${routerInfo.address}/${routerInfo.id}`)
-    this.emit(KitooCoreEvents.ROUTER_FAILURE, routerInfo)
+    this.emit(KitooCoreEvents.ROUTER_FAIL, routerInfo)
   } catch (err) {
     this.emit('error', err)
   }
@@ -358,7 +359,7 @@ async function _routerReconnectHandler (routerInfo) {
 
 async function _routerReconnectFailureHandler (routerInfo) {
   try {
-    await this.disconnect(routerInfo.address)
+    await this.disconnectRouter(routerInfo.address)
     this.logger.info(`Eouter reconnected with address/id - ${routerInfo.address}/${routerInfo.id}`)
     this.emit(KitooCoreEvents.ROUTER_RECONNECT_FAILURE, routerInfo)
   } catch (err) {

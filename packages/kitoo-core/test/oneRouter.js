@@ -3,7 +3,7 @@
  */
 import { assert } from 'chai'
 
-import { Router, Network, EVENTS, Errors} from '../src'
+import { Router, Network, ErrorCodes, ServiceStatus } from '../src'
 
 describe('singleRouter', () => {
   let router, service1, service2
@@ -17,7 +17,7 @@ describe('singleRouter', () => {
       await service1.start()
       await service2.start()
     } catch (err) {
-      console.log(err)
+      console.error(err)
     }
   })
 
@@ -27,7 +27,7 @@ describe('singleRouter', () => {
       await service2.stop()
       await router.stop()
     } catch (err) {
-      console.log(err)
+      console.error(err)
     }
   })
 
@@ -124,5 +124,210 @@ describe('singleRouter', () => {
       done()
     })
     service2.proxyTickAny({ event: 'foobar', data, filter: {service: /^foo/} })
+  })
+
+  it('tick to router', (done) => {
+    let expectedMessage = { foo: 'bar' }
+
+    router.onTick('foo', (msg) => {
+      router.offTick('foo')
+      assert.deepEqual(msg, expectedMessage)
+      done()
+    })
+
+    service1.tickToRouter({
+      to: router.getId(),
+      event: 'foo',
+      data: expectedMessage
+    })
+  })
+
+  it('tick any router', (done) => {
+    let expectedMessage = { foo: 'bar' }
+
+    router.onTick('foo', (msg) => {
+      assert.deepEqual(msg, expectedMessage)
+      done()
+    })
+
+    service1.tickAnyRouter({
+      event: 'foo',
+      data: expectedMessage
+    })
+  })
+
+  it('request to router', async () => {
+    let expectedMessage = { foo: 'bar' }
+
+    router.onRequest('foo', ({ body, reply }) => {
+      router.offRequest('foo')
+      assert.deepEqual(body, expectedMessage)
+      reply(body)
+    })
+
+    let res = await service1.requestToRouter({
+      to: router.getId(),
+      event: 'foo',
+      data: expectedMessage
+    })
+
+    assert.deepEqual(res, expectedMessage)
+  })
+
+  it('request any router', async () => {
+    let expectedMessage = { foo: 'bar' }
+
+    router.onRequest('foo', ({ body, reply }) => {
+      assert.deepEqual(body, expectedMessage)
+      reply(body)
+    })
+
+    let res = await service1.requestAnyRouter({
+      event: 'foo',
+      data: expectedMessage
+    })
+
+    assert.deepEqual(res, expectedMessage)
+  })
+
+  it ('pub/sub', (done) => {
+    let expectedMessage = { foo: 'bar' }
+
+    service1.subscribe({
+      event: 'foo',
+      service: 'bar',
+      handler: (msg) => {
+        assert.deepEqual(msg, expectedMessage)
+        done()
+      }
+    })
+
+    service2.publish({ event: 'foo', data: expectedMessage })
+  })
+
+  it ('tick to Service', (done) => {
+    let expectedMessage = { foo: 'bar' }
+
+    service1.onTick('foo', (msg) => {
+      assert.deepEqual(msg, expectedMessage)
+      done()
+    })
+
+    router.tickToService({
+      to: service1.getId(),
+      event: 'foo',
+      data: expectedMessage
+    })
+  })
+
+  it ('tick any Service', (done) => {
+    let expectedMessage = { foo: 'bar' }
+
+    service1.onTick('foo', (msg) => {
+      service1.offTick('foo')
+      assert.deepEqual(msg, expectedMessage)
+      done()
+    })
+
+    router.tickAnyService({
+      event: 'foo',
+      data: expectedMessage,
+      filter: { service: 'foo' }
+    })
+  })
+
+  it ('tick all Services', (done) => {
+    let expectedMessage = { foo: 'bar' }
+    let count = 0
+
+    service1.onTick('foo', (msg) => {
+      assert.deepEqual(msg, expectedMessage)
+      count++
+      count === 2 && done()
+    })
+
+    service2.onTick('foo', (msg) => {
+      assert.deepEqual(msg, expectedMessage)
+      count++
+      count === 2 && done()
+    })
+
+    router.tickAllServices({
+      event: 'foo',
+      data: expectedMessage
+    })
+  })
+
+  it ('request to Service', async () => {
+    let expectedMessage = { foo: 'bar' }
+
+    service1.onRequest('foo', ({ body, reply }) => {
+      assert.deepEqual(body, expectedMessage)
+      reply(body)
+    })
+
+    let res = await router.requestToService({
+      event: 'foo',
+      to: service1.getId(),
+      data: expectedMessage,
+    })
+
+    assert.deepEqual(res, expectedMessage)
+  })
+
+  it ('request any Service', async () => {
+    let expectedMessage = { foo: 'bar' }
+
+    service1.onRequest('foo', ({ body, reply }) => {
+      assert.deepEqual(body, expectedMessage)
+      service1.offRequest('foo')
+      reply(body)
+    })
+
+    let res = await router.requestAnyService({
+      event: 'foo',
+      data: expectedMessage,
+      filter: { service: 'foo' }
+    })
+
+    assert.deepEqual(res, expectedMessage)
+  })
+
+  it ('tick fail, node not found', (done) => {
+    try {
+      service1.getRoutingInterface({ foo: 'bar' }).proxyTickAny({
+        event: 'foo',
+        data: 'bar',
+        filter: { foo: 'bar' }
+      })
+    } catch (err) {
+      assert.equal(err.code, ErrorCodes.NO_ONLINE_ROUTER)
+      done()
+    }
+  })
+
+  it ('request fail, node not found', async () => {
+    try {
+      await service1.getRoutingInterface({ foo: 'bar' }).proxyRequestAny({
+        event: 'foo',
+        data: 'bar',
+        filter: { foo: 'bar' }
+      })
+    } catch (err) {
+      assert.equal(err.code, ErrorCodes.NO_ONLINE_ROUTER)
+    }
+  })
+
+  it ('service toJson', (done) => {
+    let serviceInfo = service1.toJSON()
+    assert.deepEqual(serviceInfo.options, { service: 'foo' })
+    assert.equal(serviceInfo.name, 'foo')
+    assert.equal(serviceInfo.status, ServiceStatus.ONLINE)
+    done()
+  })
+
+  it ('disconnect router', async () => {
+    let removed = await service1.removeRouter(router.getAddress())
+    assert.equal(removed, true)
   })
 })

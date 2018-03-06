@@ -21,7 +21,7 @@
     "loadbalance"
   ],
   "scripts": {
-    "test": "mocha --require babel-core/register",
+    "test": "cross-env NODE_ENV=test nyc --check-coverage mocha --timeout 10000 ./test/*.js",
     "snyktest": "snyk test",
     "standard": "standard './src/**/*.js' --parser babel-eslint --verbose | snazzy",
     "format": "standard './src/**/*.js' --parser babel-eslint  --fix --verbose | snazzy",
@@ -45,6 +45,7 @@
   "homepage": "https://github.com/sfast/kitoo-core#readme",
   "dependencies": {
     "babel-loader": "^7.0.0",
+    "babel-plugin-istanbul": "^4.1.5",
     "babel-polyfill": "^6.23.0",
     "babel-runtime": "^6.23.0",
     "bluebird": "^3.4.7",
@@ -64,21 +65,34 @@
     "babel-core": "^6.24.1",
     "babel-eslint": "^8.0.3",
     "babel-plugin-transform-function-bind": "^6.22.0",
-    "babel-plugin-transform-runtime": "^6.23.0",
     "babel-plugin-transform-helper": "0.0.6",
     "babel-plugin-transform-regenerator": "^6.24.1",
+    "babel-plugin-transform-runtime": "^6.23.0",
     "babel-polyfill": "^6.23.0",
     "babel-preset-es2015": "^6.24.1",
     "babel-preset-es2016": "^6.24.1",
     "babel-preset-es2017": "^6.24.1",
     "chai": "^4.1.0",
+    "cross-env": "^5.1.3",
     "eslint-plugin-import": "^2.8.0",
     "eslint-plugin-node": "^5.2.1",
     "eslint-plugin-promise": "^3.6.0",
     "mocha": "^3.4.1",
+    "nyc": "^11.4.1",
     "snazzy": "^7.0.0",
     "standard": "^10.0.3",
     "webpack": "^2.5.1"
   },
-  "snyk": true
+  "snyk": true,
+  "nyc": {
+    "require": [
+      "babel-register"
+    ],
+    "reporter": [
+      "lcov",
+      "text"
+    ],
+    "sourceMap": false,
+    "instrument": false
+  }
 }

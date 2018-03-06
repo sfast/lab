@@ -68,7 +68,7 @@ export default class RouterService extends ServiceBase {
     }
 
     let { node } = _private.get(this)
-    let { actorId, address } = await node.connect(routerAddress)
+    let { actorId, address } = await node.connect({ address: routerAddress })
 
     node::proxyUtils.proxyTick({
       id: actorId,
@@ -181,7 +181,7 @@ function _routerTickMessageHandler ({type, id, event, data, filter} = {}, head) 
         break
       case MessageTypes.PUBLISH:
         let serviceNode = this.getClientInfo({ id: head.id })
-        this.tickAll({ event, data, filter: publishPredicateBuilder(event, serviceNode.getOptions().service) })
+        this.tickAll({ event, data, filter: publishPredicateBuilder(event, serviceNode.options.service) })
     }
   } catch (err) {
     this.logger.error(`error while handling service message:`, err)
