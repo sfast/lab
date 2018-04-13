@@ -10,7 +10,7 @@ describe('Router Events', () => {
   beforeEach(async () => {
     try {
       router = new Router({ bind: 'tcp://127.0.0.1:3000' })
-      network = new Network({ name: 'foo', routers: [router.getAddress()], config: { RECONNECTION_TIMEOUT: 1000 } })
+      network = new Network({ name: 'foo', router: router.getAddress(), config: { RECONNECTION_TIMEOUT: 1000 } })
 
       await router.start()
     } catch (err) {

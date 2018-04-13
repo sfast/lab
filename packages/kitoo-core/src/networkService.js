@@ -16,11 +16,11 @@ import { Events, KitooCoreEvents } from './events'
 let _private = new WeakMap()
 
 export default class NetworkService extends ServiceBase {
-  constructor ({ id, name, routers, options, config } = {}) {
+  constructor ({ id, name, router, options, config } = {}) {
     id = id || `network::${uuid()}`
     options = options || {}
     config = config || {}
-    routers = routers || []
+    router = router || 'tcp://127.0.0.1:3000'
 
     super({ id, name, options })
 
@@ -30,7 +30,7 @@ export default class NetworkService extends ServiceBase {
 
     // ** routers is just the addresses the network should connect to
     let _scope = {
-      routers,
+      router,
       node
     }
 
@@ -49,6 +49,11 @@ export default class NetworkService extends ServiceBase {
 
     // ** router reconnect failure listener
     node.on(NodeEvents.SERVER_RECONNECT_FAILURE, this::_routerReconnectFailureHandler)
+
+
+    // ** attaching handlers
+    node.onTick(Events.NETWORK.NEW_ROUTER, this::_newRouterHandler)
+    node.onRequest(Events.NETWORK.GET_ROUTERS, this::_getRoutersHandler)
   }
 
   toJSON () {
@@ -57,10 +62,7 @@ export default class NetworkService extends ServiceBase {
     return Object.assign(super.toJSON(), { options: node.getOptions() })
   }
 
-  // ** TODO
   async getRouters () {
-    let _scope = _private.get(this)
-    await Promise.all(_.map(_scope.routers, this::this.addRouter))
     let routers = await storage.find(collections.ROUTERS, {networkId: this.getId()})
     return _.map(routers, (router) => router.address)
   }
@@ -105,25 +107,29 @@ export default class NetworkService extends ServiceBase {
 
   // ** reviewed
   async start () {
-    // TODO::if at least one router is connected then resolve network start
-    // all other routers connection info should be propogated as events
+    let { router } = _private.get(this)
 
     if (this.getStatus() === ServiceStatus.ONLINE) return
 
-    let { node } = _private.get(this)
     super.start()
 
-    let routersToConnect = await this.getRouters()
+    await this.connectRouter({ routerAddress: router })
 
-    let connectionPromises = _.map(routersToConnect, (router) => {
-      // TODO:: add timeout and reconnectimeout from config
-      return node.connect({address: router})
+    let allRouters = []
+    try {
+      allRouters = await this.proxyRequestAny({ event: Events.NETWORK.GET_ROUTERS })
+    } catch (err) {
+      // ignore this error
+    }
+    _.each(allRouters, async (routerAddress) => {
+      try {
+        if (routerAddress === router) return
+
+        await this.connectRouter({ routerAddress })
+      } catch (err) {
+        this.logger.error('Error while trying to connect router in start', err)
+      }
     })
-
-    // ** attaching handlers
-    node.onTick(Events.NETWORK.NEW_ROUTER, this::_newRouterHandler)
-
-    await Promise.any(connectionPromises)
   }
 
   // ** reviewed
@@ -326,6 +332,15 @@ async function _newRouterHandler (routerAddress) {
     this.emit(KitooCoreEvents.NEW_ROUTER, { address: routerAddress })
   } catch (err) {
     this.emit('error', err)
+  }
+}
+
+async function _getRoutersHandler ({ reply, next }) {
+  try {
+    let routers = await this.getRouters()
+    reply(routers)
+  } catch (err) {
+    next(err)
   }
 }
 

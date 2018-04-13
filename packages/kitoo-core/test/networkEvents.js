@@ -11,7 +11,7 @@ describe('Network service Events', () => {
   beforeEach(async () => {
     try {
       router = new Router({ bind: 'tcp://127.0.0.1:3000' })
-      network = new Network({ name: 'foo', routers: [router.getAddress()] })
+      network = new Network({ name: 'foo', router: router.getAddress() })
 
       await router.start()
     } catch (err) {

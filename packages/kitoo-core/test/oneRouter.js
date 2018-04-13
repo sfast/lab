@@ -11,8 +11,8 @@ describe('singleRouter', () => {
   beforeEach(async () => {
     try {
       router = new Router({bind: 'tcp://127.0.0.1:8000'})
-      service1 = new Network({name: 'foo', routers: [router.getAddress()]})
-      service2 = new Network({name: 'bar', routers: [router.getAddress()]})
+      service1 = new Network({name: 'foo', router: router.getAddress()})
+      service2 = new Network({name: 'bar', router: router.getAddress()})
       await router.start()
       await service1.start()
       await service2.start()

@@ -16,7 +16,8 @@ const Events = {
   },
 
   NETWORK: {
-    NEW_ROUTER: 'kitoo.core.network.new.router'
+    NEW_ROUTER: 'kitoo.core.network.new.router',
+    GET_ROUTERS: 'kitoo.core.network.get.routers'
   }
 }
 

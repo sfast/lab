@@ -205,6 +205,7 @@ async function _routerRequestMessageHandler (request) {
     }
     reply(serviceResponse)
   } catch (err) {
+    request.next(err)
     // this.logger.error(`error while handling request message: ${err}`)
   }
 }

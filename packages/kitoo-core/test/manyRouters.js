@@ -13,12 +13,14 @@ describe('manyRouters', () => {
     try {
       router1 = new Router({bind: 'tcp://127.0.0.1:8001', options: { region: 'US' }})
       router2 = new Router({bind: 'tcp://127.0.0.1:8002', options: { region: 'EU' }})
-      service1 = new Network({name: 'foo', routers: [router1.getAddress(), router2.getAddress()]})
-      service2 = new Network({name: 'bar', routers: [router1.getAddress(), router2.getAddress()]})
+      service1 = new Network({name: 'foo', router: router1.getAddress()})
+      service2 = new Network({name: 'bar', router: router1.getAddress()})
       await router1.start()
       await router2.start()
       await service1.start()
       await service2.start()
+      await service1.connectRouter({ routerAddress: router2.getAddress() })
+      await service2.connectRouter({ routerAddress: router2.getAddress() })
     } catch (err) {
       console.log(err)
     }

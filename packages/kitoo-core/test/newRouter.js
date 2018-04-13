@@ -9,7 +9,7 @@ describe('new Router', () => {
   beforeEach(async () => {
     try {
       router1 = new Router({bind: 'tcp://127.0.0.1:8000'})
-      service = new Network({name: 'foo', routers: [router1.getAddress()]})
+      service = new Network({name: 'foo', router: router1.getAddress()})
       await router1.start()
       await service.start()
     } catch (err) {
