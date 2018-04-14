@@ -16,13 +16,13 @@ import { Events, KitooCoreEvents } from './events'
 let _private = new WeakMap()
 
 export default class NetworkService extends ServiceBase {
-  constructor ({ id, name, router, options, config } = {}) {
+  constructor ({ id, name, version, router, options, config } = {}) {
     id = id || `network::${uuid()}`
     options = options || {}
     config = config || {}
     router = router || 'tcp://127.0.0.1:3000'
 
-    super({ id, name, options })
+    super({ id, name, version, options })
 
     let node = new Node({ id: this.getId(), options, config })
 

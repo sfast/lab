@@ -10,13 +10,14 @@ import { ServiceStatus } from './enum'
 let _private = new WeakMap()
 
 export default class ServiceBase extends EventEmitter {
-  constructor ({ id, name, options } = {}) {
+  constructor ({ id, name, version, options } = {}) {
     id = id || `service::${uuid()}`
     // ** When creating service we are passing executorId and host via shell
 
     super()
 
     options.service = name || 'default'
+    options.version = version || '1.0.0'
 
     let _scope = {
       name,

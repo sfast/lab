@@ -21,6 +21,12 @@ export default class RouterService extends ServiceBase {
     super({ id, name, options })
     let node = new Node({ id, bind, options })
 
+    node.metric.defineColumn('service', '', (row, record) => {
+      let serviceId = row.out ? record.to : record.from
+      let serviceInfo = node.getClientInfo({ id: serviceId })
+      if (!serviceInfo) return row.service
+      return `${serviceInfo.options.service}:${serviceInfo.options.version}`
+    }, true)
     this.logger = node.logger
 
     let _scope = {
@@ -79,6 +85,10 @@ export default class RouterService extends ServiceBase {
     })
 
     await node.disconnect(address)
+  }
+
+  get node () {
+    return _private.get(this).node
   }
 
   getAddress () {
