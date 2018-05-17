@@ -48,6 +48,14 @@ export function randomWithProbablilities (array, probabilities) {
   let sum = 0
   let random = Math.random()
 
+  let remaining = 1
+
+  _.each(probabilities, (prob) => {
+    remaining -= prob
+  })
+
+  probabilities.push(remaining)
+
   return _.find(array, (elem, index) => {
     sum += probabilities[index]
     if (random <= sum) {

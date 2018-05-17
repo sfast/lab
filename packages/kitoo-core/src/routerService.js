@@ -275,11 +275,11 @@ function _findWinnerNode (filter) {
 
   switch (strategyType.strategy) {
     case LoadBalancingStrategies.LATENCY_OPTIMIZED:
-      return this::_latencyOptimized(filteredNodes, strategyType.options)
+      return this::_latencyOptimized(filteredNodes)
     case LoadBalancingStrategies.CPU_OPTIMIZED:
       return this::_cpuOptimized(filteredNodes)
     case LoadBalancingStrategies.VERSION_CUSTOMIZED:
-      return this::_versionCustomized(filteredNodes)
+      return this::_versionCustomized(filteredNodes, strategyType.options)
     default:
       return this::_roundRobin(filteredNodes)
   }
@@ -310,10 +310,20 @@ function _roundRobin (nodes) {
 
 function _versionCustomized (nodes, versionInfo) {
   let { node } = _private.get(this)
+
   nodes = _.map(nodes, (nodeId) => node.getClientInfo({ id: nodeId }))
-  let groupedByVersion = _.map(versionInfo, ({version}) => {
-    _.filter(nodes, (node) => semver.satisfies(node.options.version, version))
+
+  let groupedByVersion = _.groupBy(nodes, (node) => {
+    let idx = versionInfo.length
+    _.find(versionInfo, ({version}, version_i) => {
+      if (semver.satisfies(node.options.version, version)) {
+        idx = version_i
+        return true
+      }
+    })
+    return idx
   })
+
   let winnerGroup = randomWithProbablilities(groupedByVersion, _.map(versionInfo, ({prob}) => prob))
 
   return _roundRobin(winnerGroup).id
