@@ -46,18 +46,29 @@ export function publishPredicateBuilder (publishEvent, publishService) {
 
 export function randomWithProbablilities (array, probabilities) {
   let sum = 0
-  let random = Math.random()
 
   let remaining = 1
+  let newArray = [], newProbs = []
+  let unused = 0
 
   _.each(probabilities, (prob) => {
     remaining -= prob
   })
-
   probabilities.push(remaining)
 
-  return _.find(array, (elem, index) => {
-    sum += probabilities[index]
+  _.each(array, (elem, index) => {
+    if (!elem.length) {
+      unused += probabilities[index]
+      return
+    }
+    newArray.push(elem)
+    newProbs.push(probabilities[index])
+  })
+
+  let random = Math.random() * (1 - unused)
+
+  return _.find(newArray, (elem, index) => {
+    sum += newProbs[index]
     if (random <= sum) {
       return true
     }

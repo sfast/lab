@@ -313,7 +313,8 @@ function _versionCustomized (nodes, versionInfo) {
 
   nodes = _.map(nodes, (nodeId) => node.getClientInfo({ id: nodeId }))
 
-  let groupedByVersion = _.groupBy(nodes, (node) => {
+  let groupedByVersion = _.map(versionInfo, () =>  [])
+  let groupedByVersion2 = _.groupBy(nodes, (node) => {
     let idx = versionInfo.length
     _.find(versionInfo, ({version}, version_i) => {
       if (semver.satisfies(node.options.version, version)) {
@@ -322,6 +323,9 @@ function _versionCustomized (nodes, versionInfo) {
       }
     })
     return idx
+  })
+  _.each(groupedByVersion2, (nodes, index) => {
+    groupedByVersion[index] = nodes
   })
 
   let winnerGroup = randomWithProbablilities(groupedByVersion, _.map(versionInfo, ({prob}) => prob))
