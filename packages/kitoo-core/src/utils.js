@@ -43,3 +43,15 @@ export function publishPredicateBuilder (publishEvent, publishService) {
     return subscribedEventServices === '*' || subscribedEventServices.indexOf(publishService) !== -1
   }
 }
+
+export function randomWithProbablilities (array, probabilities) {
+  let sum = 0
+  let random = Math.random()
+
+  return _.find(array, (elem, index) => {
+    sum += probabilities[index]
+    if (random <= sum) {
+      return true
+    }
+  })
+}

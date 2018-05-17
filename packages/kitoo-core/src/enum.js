@@ -11,9 +11,21 @@ const ServiceStatus = {
   OFFLINE: 'offline'
 }
 
-export { ServiceStatus, MessageTypes }
+const LoadBalancingStrategies = {
+  ROUND_ROBIN: 'round.robin',
+  VERSION_CUSTOMIZED: 'version.customized',
+  LATENCY_OPTIMIZED: 'latency.optimized',
+  CPU_OPTIMIZED: 'cpu.optimized'
+}
+
+export {
+  ServiceStatus,
+  MessageTypes,
+  LoadBalancingStrategies
+}
 
 export default {
   ServiceStatus,
-  MessageTypes
+  MessageTypes,
+  LoadBalancingStrategies
 }

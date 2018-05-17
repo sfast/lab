@@ -4,12 +4,14 @@
 
 import uuid from 'uuid/v4'
 import { NodeEvents, Node } from 'zeronode'
+import _ from 'underscore'
+import semver from 'semver'
 
 import proxyUtils from './proxy'
 import ServiceBase from './serviceBase'
 
-import { deserializeObject, publishPredicateBuilder } from './utils'
-import { ServiceStatus, MessageTypes } from './enum'
+import { deserializeObject, publishPredicateBuilder, randomWithProbablilities } from './utils'
+import { ServiceStatus, MessageTypes, LoadBalancingStrategies } from './enum'
 import {  KitooCoreEvents, Events } from './events'
 
 let _private = new WeakMap()
@@ -30,7 +32,8 @@ export default class RouterService extends ServiceBase {
     this.logger = node.logger
 
     let _scope = {
-      node
+      node,
+      strategy: LoadBalancingStrategies.ROUND_ROBIN
     }
 
     node.on(NodeEvents.CLIENT_CONNECTED, this::_serviceWelcomeHandler)
@@ -47,11 +50,14 @@ export default class RouterService extends ServiceBase {
 
     super.start()
     await node.bind(bind)
+    // enabling metrics
+    node.metrics.enable()
 
     // ** PROXIES EXPECTING FROM SERVICE LAYER
     // ** attaching event handlers
     node.onTick(Events.ROUTER.MESSAGE, node::_routerTickMessageHandler)
     node.onRequest(Events.ROUTER.MESSAGE, node::_routerRequestMessageHandler)
+    node.onRequest(Events.ROUTER.DEFINE_LOADBALANCING_STRATEGY, node::_defineLoadBalancingStrategyHandler)
   }
 
   async stop () {
@@ -85,6 +91,22 @@ export default class RouterService extends ServiceBase {
     })
 
     await node.disconnect(address)
+  }
+
+  defineLoadBalancingStrategy ({ service, strategy, options } = {}) {
+    strategy = strategy || LoadBalancingStrategies.ROUND_ROBIN
+    options = options || {}
+    let _scope = _private.get(this)
+
+    if (typeof service === 'undefined') {
+      return _scope.strategy.all = { strategy,  options }
+    }
+
+    if (typeof service !== 'string') {
+      throw 'service must be string'
+    }
+
+    _scope.strategy[service] = { strategy, options }
   }
 
   get node () {
@@ -184,7 +206,8 @@ function _routerTickMessageHandler ({type, id, event, data, filter} = {}, head) 
         break
       case MessageTypes.EMIT_ANY:
         filter = deserializeObject(filter)
-        this.tickAny({ event, data, filter })
+        let nodeId = this::_findWinnerNode(filter)
+        this.tick({ to: nodeId, event, data })
         break
       case MessageTypes.EMIT_TO:
         this.tick({ to: id, event, data })
@@ -207,7 +230,8 @@ async function _routerRequestMessageHandler (request) {
     switch (type) {
       case MessageTypes.EMIT_ANY:
         filter = deserializeObject(filter)
-        serviceResponse = await this.requestAny({ event, data, timeout, filter })
+        let nodeId = this::_findWinnerNode(filter)
+        serviceResponse = await this.request({ to: nodeId, event, data, timeout })
         break
       case MessageTypes.EMIT_TO:
         serviceResponse = await this.request({ to: id, event, data, timeout })
@@ -219,3 +243,83 @@ async function _routerRequestMessageHandler (request) {
     // this.logger.error(`error while handling request message: ${err}`)
   }
 }
+
+function _defineLoadBalancingStrategyHandler (request) {
+  try {
+    let { body, reply } = request
+    this.defineLoadBalancingStrategy(body)
+    reply()
+  } catch (err) {
+    request.next(err)
+  }
+}
+
+function _findWinnerNode (filter) {
+  let nodesFilter = {}
+  let { node, strategy } = _private.get(this)
+
+  if (_.isFunction(filter)) {
+    nodesFilter.predicate = filter
+  } else {
+    nodesFilter.options = filter || {}
+  }
+  let filteredNodes = node.getFilteredNodes(nodesFilter)
+
+  let strategyType = strategy.all
+
+  if (typeof nodesFilter.options.service === 'string') {
+    strategyType = strategy[nodesFilter.options.service]
+  }
+
+  switch (strategyType.strategy) {
+    case LoadBalancingStrategies.LATENCY_OPTIMIZED:
+      return this::_latencyOptimized(filteredNodes, strategyType.options)
+    case LoadBalancingStrategies.CPU_OPTIMIZED:
+      return this::_cpuOptimized(filteredNodes)
+    case LoadBalancingStrategies.VERSION_CUSTOMIZED:
+      return this::_versionCustomized(filteredNodes)
+    default:
+      return this::_roundRobin(filteredNodes)
+  }
+
+}
+
+function _latencyOptimized (nodes) {
+  let { node } = _private.get(this)
+
+  let nodeInformations = _.map(nodes, (nodeId) => {
+    let { total } = node.metrics.getMetrics({ node: nodeId, request: true , out: true })
+    total.node = nodeId
+    return total
+  })
+
+  nodeInformations.sort((a, b) => {
+    return a.latency - b.latency
+  })
+
+  return nodeInformations[0].node
+}
+
+function _roundRobin (nodes) {
+  let len = nodes.length
+  let idx = Math.floor(Math.random() * len)
+  return nodes[idx]
+}
+
+function _versionCustomized (nodes, versionInfo) {
+  let { node } = _private.get(this)
+  nodes = _.map(nodes, (nodeId) => node.getClientInfo({ id: nodeId }))
+  let groupedByVersion = _.map(versionInfo, ({version}) => {
+    _.filter(nodes, (node) => semver.satisfies(node.options.version, version))
+  })
+  let winnerGroup = randomWithProbablilities(groupedByVersion, _.map(versionInfo, ({prob}) => prob))
+
+  return _roundRobin(winnerGroup).id
+}
+
+function _cpuOptimized (nodes) {
+  //TODO: implement later
+  // now returning round robin
+  return _roundRobin(nodes)
+}
+

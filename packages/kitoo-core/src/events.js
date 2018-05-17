@@ -12,7 +12,8 @@ const KitooCoreEvents = {
 
 const Events = {
   ROUTER: {
-    MESSAGE: 'kitoo.core.router.message'
+    MESSAGE: 'kitoo.core.router.message',
+    DEFINE_LOADBALANCING_STRATEGY: 'kitoo.core.router.define.strategy'
   },
 
   NETWORK: {

@@ -52,6 +52,7 @@
     "fs-extra": "^3.0.1",
     "lokijs": "^1.4.3",
     "read-config": "^2.0.0",
+    "semver": "^5.5.0",
     "shortid": "^2.2.8",
     "underscore": "latest",
     "uuid": "^3.1.0",
@@ -83,7 +84,7 @@
     "standard": "^10.0.3",
     "webpack": "^2.5.1"
   },
-  "snyk": true,
+  "snyk": false,
   "nyc": {
     "require": [
       "babel-register"
