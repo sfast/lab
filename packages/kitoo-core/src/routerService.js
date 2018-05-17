@@ -33,7 +33,7 @@ export default class RouterService extends ServiceBase {
 
     let _scope = {
       node,
-      strategy: LoadBalancingStrategies.ROUND_ROBIN
+      strategy: { all: LoadBalancingStrategies.ROUND_ROBIN }
     }
 
     node.on(NodeEvents.CLIENT_CONNECTED, this::_serviceWelcomeHandler)
@@ -51,12 +51,12 @@ export default class RouterService extends ServiceBase {
     super.start()
     await node.bind(bind)
     // enabling metrics
-    node.metrics.enable()
+    node.enableMetrics(100)
 
     // ** PROXIES EXPECTING FROM SERVICE LAYER
     // ** attaching event handlers
-    node.onTick(Events.ROUTER.MESSAGE, node::_routerTickMessageHandler)
-    node.onRequest(Events.ROUTER.MESSAGE, node::_routerRequestMessageHandler)
+    node.onTick(Events.ROUTER.MESSAGE, this::_routerTickMessageHandler)
+    node.onRequest(Events.ROUTER.MESSAGE, this::_routerRequestMessageHandler)
     node.onRequest(Events.ROUTER.DEFINE_LOADBALANCING_STRATEGY, node::_defineLoadBalancingStrategyHandler)
   }
 
@@ -199,22 +199,23 @@ function _routerTickMessageHandler ({type, id, event, data, filter} = {}, head) 
   try {
     // TODO :: some higher level checking if there is service with that filter
 
+    let { node } = _private.get(this)
     switch (type) {
       case MessageTypes.BROADCAST:
         filter = deserializeObject(filter)
-        this.tickAll({ event, data, filter })
+        node.tickAll({ event, data, filter })
         break
       case MessageTypes.EMIT_ANY:
         filter = deserializeObject(filter)
         let nodeId = this::_findWinnerNode(filter)
-        this.tick({ to: nodeId, event, data })
+        node.tick({ to: nodeId, event, data })
         break
       case MessageTypes.EMIT_TO:
-        this.tick({ to: id, event, data })
+        node.tick({ to: id, event, data })
         break
       case MessageTypes.PUBLISH:
-        let serviceNode = this.getClientInfo({ id: head.id })
-        this.tickAll({ event, data, filter: publishPredicateBuilder(event, serviceNode.options.service) })
+        let serviceNode = node.getClientInfo({ id: head.id })
+        node.tickAll({ event, data, filter: publishPredicateBuilder(event, serviceNode.options.service) })
     }
   } catch (err) {
     this.logger.error(`error while handling service message:`, err)
@@ -223,6 +224,7 @@ function _routerTickMessageHandler ({type, id, event, data, filter} = {}, head) 
 
 async function _routerRequestMessageHandler (request) {
   try {
+    let { node } = _private.get(this)
     let {body, reply} = request
     let {type, id, event, data, timeout, filter} = body
     let serviceResponse
@@ -231,10 +233,10 @@ async function _routerRequestMessageHandler (request) {
       case MessageTypes.EMIT_ANY:
         filter = deserializeObject(filter)
         let nodeId = this::_findWinnerNode(filter)
-        serviceResponse = await this.request({ to: nodeId, event, data, timeout })
+        serviceResponse = await node.request({ to: nodeId, event, data, timeout })
         break
       case MessageTypes.EMIT_TO:
-        serviceResponse = await this.request({ to: id, event, data, timeout })
+        serviceResponse = await node.request({ to: id, event, data, timeout })
         break
     }
     reply(serviceResponse)
@@ -268,7 +270,7 @@ function _findWinnerNode (filter) {
   let strategyType = strategy.all
 
   if (typeof nodesFilter.options.service === 'string') {
-    strategyType = strategy[nodesFilter.options.service]
+    strategyType = strategy[nodesFilter.options.service] || strategyType
   }
 
   switch (strategyType.strategy) {
@@ -288,7 +290,7 @@ function _latencyOptimized (nodes) {
   let { node } = _private.get(this)
 
   let nodeInformations = _.map(nodes, (nodeId) => {
-    let { total } = node.metrics.getMetrics({ node: nodeId, request: true , out: true })
+    let { total } = node.metric.getMetrics({ node: nodeId, request: true , out: true })
     total.node = nodeId
     return total
   })
