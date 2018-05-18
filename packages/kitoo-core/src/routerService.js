@@ -57,7 +57,7 @@ export default class RouterService extends ServiceBase {
     // ** attaching event handlers
     node.onTick(Events.ROUTER.MESSAGE, this::_routerTickMessageHandler)
     node.onRequest(Events.ROUTER.MESSAGE, this::_routerRequestMessageHandler)
-    node.onRequest(Events.ROUTER.DEFINE_LOADBALANCING_STRATEGY, node::_defineLoadBalancingStrategyHandler)
+    node.onRequest(Events.ROUTER.DEFINE_LOADBALANCING_STRATEGY, this::_defineLoadBalancingStrategyHandler)
   }
 
   async stop () {
@@ -252,7 +252,7 @@ function _defineLoadBalancingStrategyHandler (request) {
     this.defineLoadBalancingStrategy(body)
     reply()
   } catch (err) {
-    request.next(err)
+    request.next(err.message)
   }
 }
 
@@ -314,6 +314,8 @@ function _versionCustomized (nodes, versionInfo) {
   nodes = _.map(nodes, (nodeId) => node.getClientInfo({ id: nodeId }))
 
   let groupedByVersion = _.map(versionInfo, () =>  [])
+  groupedByVersion.push([])
+
   let groupedByVersion2 = _.groupBy(nodes, (node) => {
     let idx = versionInfo.length
     _.find(versionInfo, ({version}, version_i) => {

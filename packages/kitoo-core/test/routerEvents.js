@@ -101,7 +101,6 @@ describe('Router Events', () => {
 
     network.on(Events.ROUTER_RECONNECT, () => {
 
-      console.log('aaaaa')
       router.stop()
         .then(() => {
           done()

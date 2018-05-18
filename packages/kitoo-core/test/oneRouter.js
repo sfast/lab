@@ -3,7 +3,7 @@
  */
 import { assert } from 'chai'
 
-import { Router, Network, ErrorCodes, ServiceStatus } from '../src'
+import { Router, Network, ErrorCodes, ServiceStatus, LoadBalancingStrategies, RouterEvents } from '../src'
 
 describe('singleRouter', () => {
   let router, service1, service2
@@ -329,5 +329,70 @@ describe('singleRouter', () => {
   it ('disconnect router', async () => {
     let removed = await service1.removeRouter(router.getAddress())
     assert.equal(removed, true)
+  })
+
+  it ('defined strategy (error)', async () => {
+    try {
+      await router.defineLoadBalancingStrategy({ service: { foo: 'bar' } })
+    } catch (err) {
+      assert.equal(err, 'service must be string')
+    }
+  })
+
+  it ('version customized strategy ( not satisfying )', async () => {
+    let expectedMessage = 'bar'
+
+    router.defineLoadBalancingStrategy( { strategy: LoadBalancingStrategies.VERSION_CUSTOMIZED,  options: [{ version: '>=1.5.1', prob: 0.5 }]})
+    service1.onRequest('foo', ({ body, reply }) => {
+      assert.equal(body, expectedMessage)
+      reply(expectedMessage)
+    })
+
+    let reply = await service2.getService('foo').requestAny({ event: 'foo', data: expectedMessage })
+
+    assert.equal(reply, expectedMessage)
+  })
+
+  it ('version customized strategy (satisfying)', async () => {
+    let expectedMessage = 'bar'
+
+    router.defineLoadBalancingStrategy( { strategy: LoadBalancingStrategies.VERSION_CUSTOMIZED,  options: [{ version: '>=0.5.1', prob: 0.5 }]})
+    service1.onRequest('foo', ({ body, reply }) => {
+      assert.equal(body, expectedMessage)
+      reply(expectedMessage)
+    })
+
+    let reply = await service2.getService('foo').requestAny({ event: 'foo', data: expectedMessage })
+
+    assert.equal(reply, expectedMessage)
+  })
+
+  it ('latency optimized strategy', async () => {
+    let expectedMessage = 'bar'
+
+    router.defineLoadBalancingStrategy( { service: 'foo', strategy: LoadBalancingStrategies.LATENCY_OPTIMIZED })
+    service1.onRequest('foo', ({ body, reply }) => {
+      assert.equal(body, expectedMessage)
+      reply(expectedMessage)
+    })
+
+    let reply = await service2.getService('foo').requestAny({ event: 'foo', data: expectedMessage })
+
+    assert.equal(reply, expectedMessage)
+  })
+
+  it ('define strategy remotely', async () => {
+    try {
+      await service1.requestToRouter({
+        to: router.getId(),
+        event: RouterEvents.DEFINE_LOADBALANCING_STRATEGY,
+        data: {
+          strategy: LoadBalancingStrategies.VERSION_CUSTOMIZED,
+          options: [{ version: '>=0.3', prob: 0.02 }]
+        }
+      })
+    } catch (err) {
+      console.error(err)
+    }
   })
 })
