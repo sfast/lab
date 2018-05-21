@@ -20,7 +20,6 @@ export default class NetworkService extends ServiceBase {
     id = id || `network::${uuid()}`
     options = options || {}
     config = config || {}
-    router = router || 'tcp://127.0.0.1:3000'
 
     super({ id, name, version, options })
 
@@ -93,6 +92,10 @@ export default class NetworkService extends ServiceBase {
   }
 
   async addRouter (routerAddress) {
+    let _scope = _private.get(this)
+
+    _scope.router = _scope.router || routerAddress
+
     let router = await storage.findOne(collections.ROUTERS, {address: routerAddress, networkId: this.getId()})
     if (!router) {
       router = await storage.insert(collections.ROUTERS, {address: routerAddress, networkId: this.getId()})
@@ -108,6 +111,10 @@ export default class NetworkService extends ServiceBase {
   // ** reviewed
   async start () {
     let { router } = _private.get(this)
+
+    if (!router) {
+      throw new Error('add router before starting network service ')
+    }
 
     if (this.getStatus() === ServiceStatus.ONLINE) return
 

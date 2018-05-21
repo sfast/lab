@@ -16,6 +16,7 @@ export default class ServiceBase extends EventEmitter {
 
     super()
 
+    //TODO validate version
     options.service = name || 'default'
     options.version = version || '1.0.0'
 

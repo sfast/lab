@@ -9,7 +9,7 @@ import {Network} from '../../src'
     process.on('SIGHUP', () => {
       process.exit()
     })
-    let network = new Network({ name: 'foo', routers: ['tcp://127.0.0.1:3000']})
+    let network = new Network({ name: 'foo', router: 'tcp://127.0.0.1:3000' })
     await network.start()
     console.log(process.pid)
   } catch (err) {
