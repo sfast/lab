@@ -28,6 +28,7 @@
     "rimraf": "rimraf",
     "clear": "rimraf ./dist",
     "compile": "./node_modules/babel-cli/bin/babel.js -d dist/ src/",
+    "prepublish": "npm run build",
     "build": "npm run clear && npm run compile"
   },
   "repository": {
@@ -57,7 +58,7 @@
     "vorpal": "^1.12.0",
     "vorpal-autocomplete-fs": "0.0.3",
     "yargs": "^6.6.0",
-    "zeronode": "git+git@github.com:sfast/zeronode.git#sprint201819"
+    "zeronode": "^1.1.6"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",
