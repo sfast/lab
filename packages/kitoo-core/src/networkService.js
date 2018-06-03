@@ -61,6 +61,10 @@ export default class NetworkService extends ServiceBase {
     return Object.assign(super.toJSON(), { options: node.getOptions() })
   }
 
+  get node () {
+    return _private.get(this).node
+  }
+
   async getRouters () {
     let routers = await storage.find(collections.ROUTERS, {networkId: this.getId()})
     return _.map(routers, (router) => router.address)
