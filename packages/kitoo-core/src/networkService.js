@@ -349,7 +349,7 @@ async function _newRouterHandler (routerAddress) {
 async function _getRoutersHandler ({ reply, next }) {
   try {
     let routers = await this.getRouters()
-    reply(routers)
+    reply(_.map(routers, (router) => router.address))
   } catch (err) {
     next(err)
   }
