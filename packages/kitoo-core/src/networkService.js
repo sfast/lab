@@ -136,6 +136,7 @@ export default class NetworkService extends ServiceBase {
       try {
         if (routerAddress === router) return
 
+        console.log(routerAddress, router)
         await this.connectRouter({ routerAddress })
       } catch (err) {
         this.logger.error('Error while trying to connect router in start', err)
@@ -349,7 +350,7 @@ async function _newRouterHandler (routerAddress) {
 async function _getRoutersHandler ({ reply, next }) {
   try {
     let routers = await this.getRouters()
-    reply(_.map(routers, (router) => router.address))
+    reply(routers)
   } catch (err) {
     next(err)
   }
