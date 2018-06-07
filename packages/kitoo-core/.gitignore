@@ -4,3 +4,4 @@ tmp/
 db/
 dist/
 npm-debug.log
+.nyc_output
