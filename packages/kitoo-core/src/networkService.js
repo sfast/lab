@@ -78,9 +78,9 @@ export default class NetworkService extends ServiceBase {
     let { node } = _private.get(this)
 
     // ** awaiting the actor of router
-    let { online, address } = await node.connect({ address: routerAddress, timeout, reconnectionTimeout })
+    let { online, address, id } = await node.connect({ address: routerAddress, timeout, reconnectionTimeout })
 
-    return online ? this.addRouter(address) : null
+    return online ? this.addRouter(address, id) : null
   }
 
   async disconnectRouter (routerAddress) {
@@ -95,14 +95,17 @@ export default class NetworkService extends ServiceBase {
     return true
   }
 
-  async addRouter (routerAddress) {
+  async addRouter (routerAddress, routerId) {
     let _scope = _private.get(this)
 
     _scope.router = _scope.router || routerAddress
 
     let router = await storage.findOne(collections.ROUTERS, {address: routerAddress, networkId: this.getId()})
     if (!router) {
-      router = await storage.insert(collections.ROUTERS, {address: routerAddress, networkId: this.getId()})
+      router = await storage.insert(collections.ROUTERS, {address: routerAddress, networkId: this.getId(), routerId: routerId})
+    } else if (routerId) {
+      router.routerId = routerId
+      await storage.update(router)
     }
 
     return router
@@ -128,7 +131,9 @@ export default class NetworkService extends ServiceBase {
 
     let allRouters = []
     try {
-      allRouters = await this.proxyRequestAny({ event: Events.NETWORK.GET_ROUTERS })
+      allRouters = await this.proxyRequestAny({ event: Events.NETWORK.GET_ROUTERS, filter: {
+          _id: { $ne: this.getId() }
+        } })
     } catch (err) {
       // ignore this error
     }
@@ -136,7 +141,6 @@ export default class NetworkService extends ServiceBase {
       try {
         if (routerAddress === router) return
 
-        console.log(routerAddress, router)
         await this.connectRouter({ routerAddress })
       } catch (err) {
         this.logger.error('Error while trying to connect router in start', err)
@@ -347,10 +351,10 @@ async function _newRouterHandler (routerAddress) {
   }
 }
 
-async function _getRoutersHandler ({ reply, next }) {
+async function _getRoutersHandler ({ reply, next, head }) {
   try {
-    let routers = await this.getRouters()
-    reply(routers)
+    let routers = await storage.find(collections.ROUTERS, {networkId: this.getId()})
+    reply(_.map(_.filter(routers, (router) => router.routerId !== head.id), (router) => router.address))
   } catch (err) {
     next(err)
   }
