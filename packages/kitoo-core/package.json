@@ -21,7 +21,7 @@
     "loadbalance"
   ],
   "scripts": {
-    "test": "cross-env NODE_ENV=test nyc --check-coverage mocha --timeout 10000 ./test/*.js",
+    "test": "cross-env NODE_ENV=test nyc --check-coverage mocha --exit --timeout 10000 ./test/*.js",
     "snyktest": "snyk test",
     "standard": "standard './src/**/*.js' --parser babel-eslint --verbose | snazzy",
     "format": "standard './src/**/*.js' --parser babel-eslint  --fix --verbose | snazzy",
@@ -60,7 +60,7 @@
     "uuid": "^3.1.0",
     "vorpal": "^1.12.0",
     "yargs": "^12.0.2",
-    "zeronode": "^1.1.23"
+    "zeronode": "^1.1.24"
   },
   "devDependencies": {
     "babel-cli": "^6.24.1",

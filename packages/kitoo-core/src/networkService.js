@@ -30,7 +30,9 @@ export default class NetworkService extends ServiceBase {
     // ** routers is just the addresses the network should connect to
     let _scope = {
       router,
-      node
+      node,
+      tickMap: new Map(),
+      requestMap: new Map()
     }
 
     _private.set(this, _scope)
@@ -51,8 +53,8 @@ export default class NetworkService extends ServiceBase {
 
 
     // ** attaching handlers
-    node.onTick(Events.NETWORK.NEW_ROUTER, this::_newRouterHandler)
-    node.onRequest(Events.NETWORK.GET_ROUTERS, this::_getRoutersHandler)
+    this.onTick(Events.NETWORK.NEW_ROUTER, this::_newRouterHandler)
+    this.onRequest(Events.NETWORK.GET_ROUTERS, this::_getRoutersHandler)
   }
 
   toJSON () {
@@ -292,27 +294,45 @@ export default class NetworkService extends ServiceBase {
   }
 
   onTick (event, handler) {
-    let { node } = _private.get(this)
-
-    node.onTick(event, handler)
+    let { node, tickMap } = _private.get(this)
+    let mappedHandler = null
+    if (tickMap.has(handler)) {
+      mappedHandler = tickMap.get(handler)
+    } else {
+      mappedHandler = ({ head, data }, routerHead) => {
+        handler(data, { id: head.id, event: routerHead.event, routerId: routerHead.id })
+      }
+      tickMap.set(handler, mappedHandler)
+    }
+    node.onTick(event, mappedHandler)
   }
 
   offTick (event, handler) {
-    let { node } = _private.get(this)
-
-    node.offTick(event, handler)
+    let { node, tickMap } = _private.get(this)
+    if (!tickMap.has(handler)) return
+    node.offTick(event, tickMap.get(handler))
+    tickMap.delete(handler)
   }
 
   onRequest (requestEvent, handler) {
-    let { node } = _private.get(this)
-
-    node.onRequest(requestEvent, handler)
+    let { node, requestMap } = _private.get(this)
+    let mappedHandler = null
+    if (requestMap.has(handler)) {
+      mappedHandler = requestMap.get(handler)
+    } else {
+      mappedHandler = ({ body, reply, next, error, head }) => {
+        handler({ reply, next, error, body: body.data, head: { id: body.id, event: head.event, routerId: head.id } })
+      }
+      requestMap.set(handler, mappedHandler)
+    }
+    node.onRequest(requestEvent, mappedHandler)
   }
 
   offRequest (requestEvent, handler) {
-    let { node } = _private.get(this)
-
-    node.offRequest(requestEvent, handler)
+    let { node, requestMap } = _private.get(this)
+    if (!requestMap.has(handler)) return
+    node.offRequest(requestEvent, requestMap.get(handler))
+    requestMap.delete(handler)
   }
 
   // ** You can subscribe at first and then connect to router

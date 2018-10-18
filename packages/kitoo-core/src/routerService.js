@@ -121,27 +121,27 @@ export default class RouterService extends ServiceBase {
   // ** tick to services
   tickToService ({ to, event, data }) {
     let { node } = _private.get(this)
-    return node.tick({ to, event, data })
+    return node.tick({ to, event, data: { data, head: { event, id: node.getId() } } })
   }
 
   tickAnyService ({ event, data, filter }) {
     let { node } = _private.get(this)
-    return node.tickAny({ event, data, filter })
+    return node.tickAny({ event, data: { data, head: { event, id: node.getId() } }, filter })
   }
 
   tickAllServices ({ event, data, filter }) {
     let { node } = _private.get(this)
-    return node.tickAll({ event, data, filter })
+    return node.tickAll({ event, data: { data, head: { event, id: node.getId() } }, filter })
   }
 
   requestToService ({ to, event, data, timeout }) {
     let { node } = _private.get(this)
-    return node.request({ to, event, data, timeout })
+    return node.request({ to, event, data: { data, head: { event, id: node.getId() } }, timeout })
   }
 
   requestAnyService ({ event, data, timeout, filter }) {
     let { node } = _private.get(this)
-    return node.requestAny({ event, data, timeout, filter })
+    return node.requestAny({ event, data: { data, head: { event, id: node.getId() } }, timeout, filter })
   }
 
   onTick (event, handler) {
@@ -203,15 +203,15 @@ function _routerTickMessageHandler ({type, id, event, data, filter} = {}, head) 
     switch (type) {
       case MessageTypes.BROADCAST:
         filter = deserializeObject(filter)
-        node.tickAll({ event, data, filter })
+        node.tickAll({ event, data: { head: { id: head.id }, data }, filter })
         break
       case MessageTypes.EMIT_ANY:
         filter = deserializeObject(filter)
         let nodeId = this::_findWinnerNode(filter)
-        node.tick({ to: nodeId, event, data })
+        node.tick({ to: nodeId, event, data: { head: { id: head.id }, data } })
         break
       case MessageTypes.EMIT_TO:
-        node.tick({ to: id, event, data })
+        node.tick({ to: id, event, data: { head: { id: head.id }, data } })
         break
       case MessageTypes.PUBLISH:
         let serviceNode = node.getClientInfo({ id: head.id })
@@ -225,7 +225,7 @@ function _routerTickMessageHandler ({type, id, event, data, filter} = {}, head) 
 async function _routerRequestMessageHandler (request) {
   try {
     let { node } = _private.get(this)
-    let {body, reply} = request
+    let {body, reply, head } = request
     let {type, id, event, data, timeout, filter} = body
     let serviceResponse
         // TODO :: some higher level checking if there is service with that filter
@@ -233,10 +233,10 @@ async function _routerRequestMessageHandler (request) {
       case MessageTypes.EMIT_ANY:
         filter = deserializeObject(filter)
         let nodeId = this::_findWinnerNode(filter)
-        serviceResponse = await node.request({ to: nodeId, event, data, timeout })
+        serviceResponse = await node.request({ to: nodeId, event, data: { head: { id: head.id }, data }, timeout })
         break
       case MessageTypes.EMIT_TO:
-        serviceResponse = await node.request({ to: id, event, data, timeout })
+        serviceResponse = await node.request({ to: id, event, data: { head: { id: head.id }, data }, timeout })
         break
     }
     reply(serviceResponse)

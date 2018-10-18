@@ -320,7 +320,7 @@ describe('singleRouter', () => {
 
   it ('service toJson', (done) => {
     let serviceInfo = service1.toJSON()
-    assert.deepEqual(serviceInfo.options, { service: 'foo', version: '1.0.0' })
+    assert.deepEqual(serviceInfo.options, { service: 'foo', version: '1.0.0', _id: service1.getId() })
     assert.equal(serviceInfo.name, 'foo')
     assert.equal(serviceInfo.status, ServiceStatus.ONLINE)
     done()

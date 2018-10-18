@@ -182,7 +182,7 @@ describe('manyRouters', () => {
     let count = 0
 
     service2.onTick('foo', (msg, head) => {
-      assert.equal(head.id, router1.getId())
+      assert.equal(head.routerId, router1.getId())
       assert.deepEqual(msg, expectedMessage)
       count++
       count === 2 && done()
@@ -206,7 +206,7 @@ describe('manyRouters', () => {
     let expectedMessage = { foo: 'bar' }
 
     service2.onRequest('foo', ({ reply, body, head }) => {
-      assert.equal(head.id, router1.getId())
+      assert.equal(head.routerId, router1.getId())
       assert.deepEqual(body, expectedMessage)
       reply(body)
     })
@@ -225,7 +225,7 @@ describe('manyRouters', () => {
     let expectedMessage = { foo: 'bar' }
 
     service2.onRequest('foo', ({ body, reply, head }) => {
-      assert.equal(head.id, router1.getId())
+      assert.equal(head.routerId, router1.getId())
       assert.deepEqual(body, expectedMessage)
       reply(body)
     })
