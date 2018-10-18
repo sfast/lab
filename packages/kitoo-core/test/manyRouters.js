@@ -15,12 +15,16 @@ describe('manyRouters', () => {
       router2 = new Router({bind: 'tcp://127.0.0.1:8002', options: { region: 'EU' }})
       service1 = new Network({name: 'foo', router: router1.getAddress()})
       service2 = new Network({name: 'bar', router: router1.getAddress()})
+      service1.node.on('error', console.log)
+      service2.node.on('error', console.log)
       await router1.start()
       await router2.start()
       await service1.start()
       await service2.start()
       await service1.connectRouter({ routerAddress: router2.getAddress() })
       await service2.connectRouter({ routerAddress: router2.getAddress() })
+      await new Promise((resolve) => setTimeout(resolve, 500))
+      // console.log(router1.node.getOptions())
     } catch (err) {
       console.log(err)
     }

@@ -21,7 +21,7 @@ export default class RouterService extends ServiceBase {
     id = id || `router::${uuid()}`
 
     super({ id, name, options })
-    let node = new Node({ id, bind, options })
+    let node = new Node({ id, bind, options: Object.assign(options, { services: {} }) })
 
     node.metric.defineColumn('service', '', (row, record) => {
       let serviceId = row.out ? record.to : record.from
@@ -39,6 +39,7 @@ export default class RouterService extends ServiceBase {
     node.on(NodeEvents.CLIENT_CONNECTED, this::_serviceWelcomeHandler)
     node.on(NodeEvents.CLIENT_FAILURE, this::_serviceFailHandler)
     node.on(NodeEvents.CLIENT_STOP, this::_serviceStopHandler)
+    node.on(NodeEvents.OPTIONS_SYNC, this::_serviceOptionsUpdate)
 
     _private.set(this, _scope)
   }
@@ -172,6 +173,11 @@ export default class RouterService extends ServiceBase {
 async function _serviceWelcomeHandler (welcomeData) {
   try {
     // TODO::DAVE (you said its not a router)
+    let { node } = _private.get(this)
+    let routerOptions = node.getOptions()
+    let services = routerOptions.services
+    services[welcomeData.id] = welcomeData.options
+    setTimeout(() => node.setOptions(routerOptions), 10)
     this.emit(KitooCoreEvents.SERVICE_WELCOME, welcomeData)
   } catch (err) {
     this.emit('error', err)
@@ -180,6 +186,11 @@ async function _serviceWelcomeHandler (welcomeData) {
 
 async function _serviceFailHandler (failData) {
   try {
+    let { node } = _private.get(this)
+    let routerOptions = node.getOptions()
+    let services = routerOptions.services
+    delete services[failData.id]
+    node.setOptions(routerOptions)
     this.emit(KitooCoreEvents.SERVICE_FAIL, failData)
   } catch (err) {
     this.emit('error', err)
@@ -188,9 +199,26 @@ async function _serviceFailHandler (failData) {
 
 async function _serviceStopHandler (stopData) {
   try {
+    let { node } = _private.get(this)
+    let routerOptions = node.getOptions()
+    let services = routerOptions.services
+    delete services[stopData.id]
+    node.setOptions(routerOptions)
     this.emit(KitooCoreEvents.SERVICE_STOP, stopData)
   } catch (err) {
     this.emit('error', err)
+  }
+}
+
+async function _serviceOptionsUpdate ({ id, newOptions }) {
+  try {
+    let { node } = _private.get(this)
+    let routerOptions = node.getOptions()
+    let services = routerOptions.services
+    services[id] = newOptions
+    node.setOptions(routerOptions)
+  } catch (err) {
+    this.logger.error('Error while handling service options update:', err)
   }
 }
 

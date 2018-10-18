@@ -298,7 +298,7 @@ describe('singleRouter', () => {
       service1.getRoutingInterface({ foo: 'bar' }).proxyTickAny({
         event: 'foo',
         data: 'bar',
-        filter: { foo: 'bar' }
+        filter: {}
       })
     } catch (err) {
       assert.equal(err.code, ErrorCodes.NO_ONLINE_ROUTER)
@@ -311,7 +311,7 @@ describe('singleRouter', () => {
       await service1.getRoutingInterface({ foo: 'bar' }).proxyRequestAny({
         event: 'foo',
         data: 'bar',
-        filter: { foo: 'bar' }
+        filter: {}
       })
     } catch (err) {
       assert.equal(err.code, ErrorCodes.NO_ONLINE_ROUTER)

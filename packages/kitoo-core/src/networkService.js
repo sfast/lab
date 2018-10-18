@@ -53,8 +53,8 @@ export default class NetworkService extends ServiceBase {
 
 
     // ** attaching handlers
-    this.onTick(Events.NETWORK.NEW_ROUTER, this::_newRouterHandler)
-    this.onRequest(Events.NETWORK.GET_ROUTERS, this::_getRoutersHandler)
+    node.onTick(Events.NETWORK.NEW_ROUTER, this::_newRouterHandler)
+    node.onRequest(Events.NETWORK.GET_ROUTERS, this::_getRoutersHandler)
   }
 
   toJSON () {
@@ -361,8 +361,9 @@ export default class NetworkService extends ServiceBase {
   }
 }
 
-async function _newRouterHandler (routerAddress) {
+async function _newRouterHandler ({ data, head }) {
   try {
+    let routerAddress = data
     await this.connectRouter({ routerAddress })
     this.logger.info(`New router with address - ${routerAddress}`)
     this.emit(KitooCoreEvents.NEW_ROUTER, { address: routerAddress })
