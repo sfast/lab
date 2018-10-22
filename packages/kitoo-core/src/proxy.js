@@ -19,7 +19,7 @@ const proxyTick = function ({ id, event, type, data, filter, routerFilter } = {}
       filter: routerFilter
     }
 
-    if (filter) this::checkFilter(filter)
+    if (filter && !this::checkFilter(filter)) return
 
     return this.tickAny(requestObject)
   } catch (err) {
@@ -53,7 +53,7 @@ const proxyRequest = async function ({ id, event, type, data, timeout, filter, r
       filter: routerFilter
     }
 
-    if (filter) this::checkFilter(filter)
+    if (filter) this::checkFilter(filter, true)
 
     return await this.requestAny(requestObject)
   } catch (err) {
@@ -116,7 +116,7 @@ const optionsPredicateBuilder = (options) => {
               case '$contains':
                 return nodeOptionValue.indexOf(value) === -1
               case '$containsAny':
-                return !!_.find(value, (v) => nodeOptionValue.indexOf(v) === -1)
+                return !_.find(value, (v) => nodeOptionValue.indexOf(v) !== -1)
               case '$containsNone':
                 return !!_.find(value, (v) => nodeOptionValue.indexOf(v) !== -1)
             }
@@ -131,7 +131,7 @@ const optionsPredicateBuilder = (options) => {
   }
 }
 
-function checkFilter (filter) {
+function checkFilter (filter, captureError = false) {
   let optionsPredicate = filter
   if (!_.isFunction(filter)) {
     optionsPredicate = optionsPredicateBuilder(filter)
@@ -144,8 +144,10 @@ function checkFilter (filter) {
     }})
 
   if (!routers || !routers.length) {
+    if (!captureError) return false
     throw new Error(`There isn't service satisfying to given filter: ${filter}`)
   }
+  return true
 }
 
 export { proxyTick, proxyRequest }
