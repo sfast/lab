@@ -1,7 +1,6 @@
 import { ErrorCodes } from 'zeronode'
 import _ from 'lodash'
 
-import { serializeObject } from './utils'
 import { Events } from './events'
 import { KitooCoreError, KitooCoreErrorCodes } from './errors'
 
@@ -13,13 +12,18 @@ const proxyTick = function ({ id, event, type, data, filter, routerFilter } = {}
         id,
         type,
         event,
-        data,
-        filter: filter ? serializeObject(filter) : undefined
+        data
       },
       filter: routerFilter
     }
 
-    if (filter && !this::checkFilter(filter)) return
+    let services = []
+    if (filter) {
+      services = this::checkFilter(filter, true)
+      if (!services) return
+    }
+
+    requestObject.data.filter = { _id: { $in: services } }
 
     return this.tickAny(requestObject)
   } catch (err) {
@@ -46,14 +50,16 @@ const proxyRequest = async function ({ id, event, type, data, timeout, filter, r
         type,
         event,
         data,
-        timeout,
-        filter: filter ? serializeObject(filter) : undefined
+        timeout
       },
       timeout,
       filter: routerFilter
     }
 
-    if (filter) this::checkFilter(filter, true)
+    let services = []
+    if (filter) services = this::checkFilter(filter, true)
+
+    requestObject.data.filter = { _id: { $in: services }}
 
     return await this.requestAny(requestObject)
   } catch (err) {
@@ -80,6 +86,10 @@ const optionsPredicateBuilder = (options) => {
       let nodeOptionValue = nodeOptions[optionKey]
 
       if (nodeOptionValue) {
+        if (_.isFunction(optionValue)) {
+          return !optionValue(nodeOptionValue)
+        }
+
         if (_.isRegExp(optionValue)) {
           return !optionValue.test(nodeOptionValue)
         }
@@ -137,17 +147,18 @@ function checkFilter (filter, captureError = false) {
     optionsPredicate = optionsPredicateBuilder(filter)
   }
 
-  let routers = this.getFilteredNodes({ predicate: (routerOptions) => {
-      return _.find(routerOptions.services, (serviceOptions, serviceId) => {
-        return optionsPredicate(serviceOptions)
-      })
-    }})
+  let services = []
+  this.getFilteredNodes({ predicate: (routerOptions) => {
+    _.each(routerOptions.services, (serviceOptions, serviceId) => {
+      optionsPredicate(serviceOptions) && services.push(serviceId)
+    })
+  }})
 
-  if (!routers || !routers.length) {
+  if (!services.length) {
     if (!captureError) return false
     throw new Error(`There isn't service satisfying to given filter: ${filter}`)
   }
-  return true
+  return services
 }
 
 export { proxyTick, proxyRequest }

@@ -10,7 +10,7 @@ import semver from 'semver'
 import proxyUtils from './proxy'
 import ServiceBase from './serviceBase'
 
-import { deserializeObject, publishPredicateBuilder, randomWithProbablilities } from './utils'
+import { publishPredicateBuilder, randomWithProbablilities } from './utils'
 import { ServiceStatus, MessageTypes, LoadBalancingStrategies } from './enum'
 import {  KitooCoreEvents, Events } from './events'
 
@@ -230,11 +230,9 @@ function _routerTickMessageHandler ({type, id, event, data, filter} = {}, head) 
     let { node } = _private.get(this)
     switch (type) {
       case MessageTypes.BROADCAST:
-        filter = deserializeObject(filter)
         node.tickAll({ event, data: { head: { id: head.id }, data }, filter })
         break
       case MessageTypes.EMIT_ANY:
-        filter = deserializeObject(filter)
         let nodeId = this::_findWinnerNode(filter)
         node.tick({ to: nodeId, event, data: { head: { id: head.id }, data } })
         break
@@ -259,7 +257,6 @@ async function _routerRequestMessageHandler (request) {
         // TODO :: some higher level checking if there is service with that filter
     switch (type) {
       case MessageTypes.EMIT_ANY:
-        filter = deserializeObject(filter)
         let nodeId = this::_findWinnerNode(filter)
         serviceResponse = await node.request({ to: nodeId, event, data: { head: { id: head.id }, data }, timeout })
         break
