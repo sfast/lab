@@ -83,7 +83,7 @@
     "nyc": "^11.4.1",
     "snazzy": "^7.0.0",
     "standard": "^10.0.3",
-    "webpack": "^2.5.1"
+    "webpack": "^5.75.0"
   },
   "snyk": false,
   "nyc": {
